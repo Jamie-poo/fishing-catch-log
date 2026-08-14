@@ -60,17 +60,11 @@ function MapViewport({ currentLocation, points, recenterRequest }: MapViewportPr
       return
     }
 
-    if (currentLocation) {
-      hasSetInitialView.current = true
-      map.setView(currentLocation, 15)
-      return
-    }
-
     if (points.length > 0) {
       hasSetInitialView.current = true
       map.fitBounds(points, { padding: [44, 44], maxZoom: 13 })
     }
-  }, [currentLocation, map, points])
+  }, [map, points])
 
   useEffect(() => {
     const latestLocation = currentLocationRef.current

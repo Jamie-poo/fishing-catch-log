@@ -305,18 +305,8 @@ h3 {
   font-family: var(--sans);
 }
 
-:root[data-theme="dark"] .phone-map-screen .leaflet-tile {
-  filter: brightness(0.62) contrast(1.18) saturate(0.72);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .phone-map-screen .leaflet-tile {
-    filter: brightness(0.62) contrast(1.18) saturate(0.72);
-  }
-}
-
 .phone-map-screen .leaflet-top.leaflet-right {
-  top: 98px;
+  top: 150px;
   right: 12px;
 }
 
