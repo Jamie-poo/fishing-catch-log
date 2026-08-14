@@ -49,6 +49,11 @@ type MapViewportProps = {
 function MapViewport({ currentLocation, points, recenterRequest }: MapViewportProps) {
   const map = useMap()
   const hasSetInitialView = useRef(false)
+  const currentLocationRef = useRef(currentLocation)
+
+  useEffect(() => {
+    currentLocationRef.current = currentLocation
+  }, [currentLocation])
 
   useEffect(() => {
     if (hasSetInitialView.current) {
@@ -68,12 +73,14 @@ function MapViewport({ currentLocation, points, recenterRequest }: MapViewportPr
   }, [currentLocation, map, points])
 
   useEffect(() => {
-    if (!currentLocation || recenterRequest === 0) {
+    const latestLocation = currentLocationRef.current
+
+    if (!latestLocation || recenterRequest === 0) {
       return
     }
 
-    map.flyTo(currentLocation, Math.max(map.getZoom(), 15))
-  }, [currentLocation, map, recenterRequest])
+    map.flyTo(latestLocation, Math.max(map.getZoom(), 15))
+  }, [map, recenterRequest])
 
   return null
 }
