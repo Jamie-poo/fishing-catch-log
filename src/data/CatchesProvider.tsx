@@ -43,7 +43,11 @@ export function CatchesProvider({ children }: { children: ReactNode }) {
   const [catches, setCatches] = useState<CatchRecord[]>(loadCatches)
 
   useEffect(() => {
-    localStorage.setItem("catches", JSON.stringify(catches))
+    try {
+      localStorage.setItem("catches", JSON.stringify(catches))
+    } catch (error) {
+      console.warn("Catches could not be saved locally.", error)
+    }
   }, [catches])
 
   const value = useMemo(() => ({ catches, setCatches }), [catches])

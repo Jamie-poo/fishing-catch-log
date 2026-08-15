@@ -640,6 +640,7 @@ h3 {
 .file-button {
   display: inline-grid;
   place-items: center;
+  cursor: pointer;
 }
 
 .photo-add-menu {

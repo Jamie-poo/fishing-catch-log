@@ -10,7 +10,6 @@ import {
 } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
 import {
-  formatCoordinateLocation,
   getLocationNameFromCoordinates,
 } from "../../data/location"
 import { useCatches } from "../../data/useCatches"
@@ -130,7 +129,6 @@ function Home({
         ]
 
         setCurrentLocation(nextLocation)
-        setLocationTitle(formatCoordinateLocation(nextLocation[0], nextLocation[1]))
         setLocationStatus("current location")
       },
       () => {
@@ -155,7 +153,7 @@ function Home({
       .then(setLocationTitle)
       .catch(() => {
         if (!controller.signal.aborted) {
-          setLocationTitle(formatCoordinateLocation(latitude, longitude))
+          setLocationTitle("Current location")
         }
       })
 
