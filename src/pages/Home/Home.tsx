@@ -825,7 +825,6 @@ function Home({
       const nextEnabled = !enabled
 
       if (nextEnabled) {
-        setMapStyle("topo")
         setLayersOpen(false)
       }
 
