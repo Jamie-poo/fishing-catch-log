@@ -164,48 +164,104 @@ function parseFirstNumber(value: string | undefined) {
   return match ? Number(match[0]) : null
 }
 
+function parseRelativeHours(value: string | undefined) {
+  if (!value) return null
+
+  const days = Number(value.match(/(\d+)d/)?.[1] ?? 0)
+  const hours = Number(value.match(/(\d+)h/)?.[1] ?? 0)
+  const minutes = Number(value.match(/(\d+)m/)?.[1] ?? 0)
+
+  return days * 24 + hours + minutes / 60
+}
+
+function isNearLightChange(...values: (string | undefined)[]) {
+  return values.some((value) => {
+    const hours = parseRelativeHours(value)
+    return hours !== null && hours <= 2.5
+  })
+}
+
+function getCodSeasonNote(date = new Date()) {
+  const month = date.getMonth()
+
+  if (month >= 8 && month <= 10) {
+    return "Closed season in many Victorian waters. Check VFA exceptions."
+  }
+
+  if (month === 11 || month <= 1) {
+    return "Prime Victorian cod season"
+  }
+
+  if (month >= 2 && month <= 4) {
+    return "Still worth targeting around low light"
+  }
+
+  return "Cooler season, expect deeper or slower fish"
+}
+
 function buildIntel(weatherValues: Record<string, string>) {
   const pressureTrend = weatherValues["weather.pressureTrend"] ?? ""
+  const pressure = parseFirstNumber(weatherValues["weather.pressure"])
+  const airTemperature = parseFirstNumber(weatherValues["weather.temperature"])
   const windSpeed = parseFirstNumber(weatherValues["weather.windSpeed"])
   const rain = parseFirstNumber(weatherValues["weather.rain"])
   const recentRain = parseFirstNumber(weatherValues["weather.recentRainAmount"])
   const dayNight = weatherValues["sun.dayNight"] ?? ""
-  let score = 54
+  const nearLightChange = isNearLightChange(
+    weatherValues["sun.relativeToSunrise"],
+    weatherValues["sun.relativeToSunset"]
+  )
+  const seasonNote = getCodSeasonNote()
+  let score = 46
 
-  if (pressureTrend.includes("Rising")) score += 16
-  if (pressureTrend.includes("Steady")) score += 10
-  if (pressureTrend.includes("Falling")) score -= 12
-  if (windSpeed !== null && windSpeed >= 6 && windSpeed <= 22) score += 8
-  if (windSpeed !== null && windSpeed > 35) score -= 12
-  if (rain !== null && rain > 0 && rain <= 2) score += 5
-  if (rain !== null && rain > 6) score -= 8
-  if (recentRain !== null && recentRain > 0 && recentRain <= 20) score += 5
-  if (dayNight === "Day") score += 3
+  if (pressure !== null && pressure < 1000) score += 18
+  if (pressure !== null && pressure >= 1018) score -= 8
+  if (pressureTrend.includes("Steady")) score += 12
+  if (pressureTrend.includes("Rising")) score += 8
+  if (pressureTrend.includes("Falling")) score -= 8
+  if (airTemperature !== null && airTemperature >= 16 && airTemperature <= 26) score += 10
+  if (airTemperature !== null && airTemperature < 10) score -= 8
+  if (airTemperature !== null && airTemperature > 32) score -= 8
+  if (dayNight === "Night") score += 10
+  if (nearLightChange) score += 10
+  if (windSpeed !== null && windSpeed >= 4 && windSpeed <= 24) score += 6
+  if (windSpeed !== null && windSpeed > 35) score -= 10
+  if (rain !== null && rain > 5) score -= 6
+  if (recentRain !== null && recentRain > 20) score -= 10
+  if (seasonNote.startsWith("Prime")) score += 10
+  if (seasonNote.startsWith("Cooler")) score -= 6
 
   const boundedScore = Math.min(95, Math.max(10, score))
   const label =
     boundedScore >= 75
-      ? "Strong"
+      ? "Strong cod window"
       : boundedScore >= 58
-        ? "Worth a look"
-        : "Patchy"
+        ? "Worth a cast"
+        : "Patchy cod bite"
   const pressureSummary = pressureTrend || "Pressure trend unavailable"
   const windSummary =
     weatherValues["weather.windSpeed"] && weatherValues["weather.windDirection"]
       ? `${weatherValues["weather.windDirection"]} ${weatherValues["weather.windSpeed"]}`
       : weatherValues["weather.windSpeed"] || "Wind unavailable"
+  const lightSummary = nearLightChange
+    ? "near a light change"
+    : dayNight === "Night"
+      ? "after dark"
+      : "daylight"
 
   return {
     label,
     score: boundedScore,
-    summary: `${pressureSummary}. Wind ${windSummary}.`,
+    summary: `Victorian Murray cod lens: ${pressureSummary}, ${lightSummary}. Work snags, edges and structure.`,
     rows: [
-      ["Pressure", pressureTrend || "-"],
+      ["Target", "Murray cod"],
+      ["Season", seasonNote],
+      ["Barometer", weatherValues["weather.pressure"] || "-"],
+      ["Pressure trend", pressureTrend || "-"],
       ["Wind", windSummary],
-      ["Rain now", weatherValues["weather.rain"] || "-"],
-      ["Rain last 24h", weatherValues["weather.recentRainAmount"] || "-"],
-      ["Light", dayNight || "-"],
-      ["Moon", weatherValues["moon.moonPhase"] || "-"],
+      ["Light window", nearLightChange ? "Sunrise/sunset window" : dayNight || "-"],
+      ["Rain / runoff", weatherValues["weather.recentRainAmount"] || weatherValues["weather.rain"] || "-"],
+      ["Moon", `${weatherValues["moon.moonPhase"] || "-"} (low weight for cod)`],
     ],
   }
 }
@@ -1007,7 +1063,7 @@ function Home({
       {intelOpen && (
         <section className="map-tool-card home-map-tool-card">
           <header>
-            <h2>Intel</h2>
+            <h2>Murray Cod Intel</h2>
             <button type="button" onClick={() => setIntelOpen(false)}>Close</button>
           </header>
           <div className="intel-score">
