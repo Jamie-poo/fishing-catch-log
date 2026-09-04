@@ -595,6 +595,13 @@ h3 {
   box-shadow: 0 8px 22px rgba(17, 24, 22, 0.18);
 }
 
+.home-map-tool-bar {
+  top: 134px;
+  left: 12px;
+  right: 12px;
+  z-index: 720;
+}
+
 .map-tool-bar button.active {
   background: var(--primary);
   color: white;
@@ -619,6 +626,13 @@ h3 {
   max-height: 70%;
   overflow: auto;
   padding: 12px;
+}
+
+.home-map-tool-card {
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  left: 12px;
+  right: 12px;
+  max-height: min(54svh, 460px);
 }
 
 .map-tool-card header {
@@ -666,6 +680,7 @@ h3 {
   color: var(--text);
   font-size: 0.84rem;
   font-weight: 700;
+  white-space: pre-line;
 }
 
 .map-card-actions {
@@ -683,9 +698,62 @@ h3 {
   padding: 10px 12px;
 }
 
+.home-measure-readout {
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  left: 12px;
+  right: 12px;
+}
+
 .measure-readout strong {
   color: var(--text);
   font-size: 1rem;
+}
+
+.intel-score {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.intel-score strong {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.intel-score span {
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.home-map-3d .leaflet-container {
+  filter: contrast(1.08) saturate(1.1);
+}
+
+.home-map-3d::after {
+  position: absolute;
+  right: 14px;
+  bottom: calc(144px + env(safe-area-inset-bottom));
+  z-index: 520;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(17, 24, 22, 0.76);
+  color: white;
+  content: "3D";
+  font-size: 0.72rem;
+  font-weight: 800;
+  pointer-events: none;
 }
 
 .map-tool-marker {
