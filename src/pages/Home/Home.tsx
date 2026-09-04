@@ -416,7 +416,12 @@ function Home({
   onRecordCatch,
 }: HomeProps) {
   const { catches } = useCatches()
-  const { mapWeatherConditions, pressureTrendHours } = useCatchLogSettings()
+  const {
+    homeMapControls,
+    homeSummary,
+    mapWeatherConditions,
+    pressureTrendHours,
+  } = useCatchLogSettings()
   const canUseGeolocation =
     typeof navigator !== "undefined" && "geolocation" in navigator
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(
@@ -514,6 +519,23 @@ function Home({
           : "-",
     },
   ]
+  const summaryEnabled = homeSummary.panel ?? true
+  const summaryCopyEnabled =
+    (homeSummary.location ?? true) || (homeSummary.gpsStatus ?? true)
+  const summaryMetrics = [
+    {
+      key: "time",
+      label: "time",
+      value: new Date().toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+    },
+    { key: "logged", label: "logged", value: catches.length },
+    { key: "species", label: "species", value: speciesCount },
+  ].filter((metric) => homeSummary[metric.key] ?? true)
+  const showSummaryMetrics =
+    summaryMetrics.length > 0 || (homeSummary.mapButton ?? true)
 
   useEffect(() => {
     try {
@@ -927,115 +949,139 @@ function Home({
         )}
       </MapContainer>
 
-      <section className="map-top-panel" aria-label="Current fishing summary">
-        <div className="map-location-preview" aria-hidden="true"></div>
-        <div className="map-top-copy">
-          <h1>{locationTitle}</h1>
-          <span className="gps-pill">{locationStatus}</span>
-        </div>
-        <div className="map-metrics">
-          <div>
-            <strong>{new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</strong>
-            <span>time</span>
-          </div>
-          <div>
-            <strong>{catches.length}</strong>
-            <span>logged</span>
-          </div>
-          <div>
-            <strong>{speciesCount}</strong>
-            <span>species</span>
-          </div>
-          <button type="button" onClick={onOpenCatchMap}>
-            Map
-          </button>
-        </div>
-      </section>
+      {summaryEnabled && (
+        <section className="map-top-panel" aria-label="Current fishing summary">
+          {summaryCopyEnabled && (
+            <div className="map-top-copy">
+              {(homeSummary.location ?? true) && <h1>{locationTitle}</h1>}
+              {(homeSummary.gpsStatus ?? true) && (
+                <span className="gps-pill">{locationStatus}</span>
+              )}
+            </div>
+          )}
+          {showSummaryMetrics && (
+            <div
+              className="map-metrics"
+              style={{
+                gridTemplateColumns: `repeat(${summaryMetrics.length + ((homeSummary.mapButton ?? true) ? 1 : 0)}, minmax(0, 1fr))`,
+              }}
+            >
+              {summaryMetrics.map((metric) => (
+                <div key={metric.key}>
+                  <strong>{metric.value}</strong>
+                  <span>{metric.label}</span>
+                </div>
+              ))}
+              {(homeSummary.mapButton ?? true) && (
+                <button type="button" onClick={onOpenCatchMap}>
+                  Map
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="home-side-tools home-left-tools" aria-label="Quick actions">
-        <button
-          className={`home-tool-button${fieldNoteOpen ? " active" : ""}`}
-          type="button"
-          onClick={toggleFieldNote}
-        >
-          <span>FN</span>
-          Field Note
-        </button>
-        <button
-          className={`home-tool-button${activeTool === "waypoint" ? " active" : ""}`}
-          type="button"
-          onClick={toggleWaypoint}
-        >
-          <span>+</span>
-          Waypoint
-        </button>
-        <button
-          type="button"
-          className="home-tool-button"
-          disabled={!currentLocation}
-          onClick={() => setRecenterRequest((current) => current + 1)}
-        >
-          <span>GPS</span>
-          Recenter
-        </button>
+        {(homeMapControls.fieldNote ?? true) && (
+          <button
+            className={`home-tool-button${fieldNoteOpen ? " active" : ""}`}
+            type="button"
+            onClick={toggleFieldNote}
+          >
+            <span>FN</span>
+            Field Note
+          </button>
+        )}
+        {(homeMapControls.waypoint ?? true) && (
+          <button
+            className={`home-tool-button${activeTool === "waypoint" ? " active" : ""}`}
+            type="button"
+            onClick={toggleWaypoint}
+          >
+            <span>+</span>
+            Waypoint
+          </button>
+        )}
+        {(homeMapControls.recenter ?? true) && (
+          <button
+            type="button"
+            className="home-tool-button"
+            disabled={!currentLocation}
+            onClick={() => setRecenterRequest((current) => current + 1)}
+          >
+            <span>GPS</span>
+            Recenter
+          </button>
+        )}
       </div>
 
       <div className="home-side-tools home-right-tools" aria-label="Map tools">
-        <button
-          className={`home-tool-button${weatherOpen ? " active" : ""}`}
-          type="button"
-          onClick={() => void openWeatherPanel()}
-        >
-          <span className="weather-button-icon" aria-hidden="true"></span>
-          Weather
-        </button>
-        <button
-          className={`home-tool-button${intelOpen ? " active" : ""}`}
-          type="button"
-          onClick={() => void openIntelPanel()}
-        >
-          <span>IN</span>
-          Intel
-        </button>
-        <button
-          className={`home-tool-button${is3d ? " active" : ""}`}
-          type="button"
-          onClick={() => setIs3d((enabled) => !enabled)}
-        >
-          <span>3D</span>
-          3D
-        </button>
-        <button
-          className={`home-tool-button${activeTool === "measure" ? " active" : ""}`}
-          type="button"
-          onClick={() => {
-            if (activeTool === "measure") {
-              setActiveTool("browse")
-              return
-            }
+        {(homeMapControls.weather ?? true) && (
+          <button
+            className={`home-tool-button${weatherOpen ? " active" : ""}`}
+            type="button"
+            onClick={() => void openWeatherPanel()}
+          >
+            <span className="weather-button-icon" aria-hidden="true"></span>
+            Weather
+          </button>
+        )}
+        {(homeMapControls.intel ?? true) && (
+          <button
+            className={`home-tool-button${intelOpen ? " active" : ""}`}
+            type="button"
+            onClick={() => void openIntelPanel()}
+          >
+            <span>IN</span>
+            Intel
+          </button>
+        )}
+        {(homeMapControls.threeD ?? true) && (
+          <button
+            className={`home-tool-button${is3d ? " active" : ""}`}
+            type="button"
+            onClick={() => setIs3d((enabled) => !enabled)}
+          >
+            <span>3D</span>
+            3D
+          </button>
+        )}
+        {(homeMapControls.measure ?? true) && (
+          <button
+            className={`home-tool-button${activeTool === "measure" ? " active" : ""}`}
+            type="button"
+            onClick={() => {
+              if (activeTool === "measure") {
+                setActiveTool("browse")
+                return
+              }
 
-            setIntelOpen(false)
-            setWeatherOpen(false)
-            closeFieldNote()
-            closeWaypoint()
-            setLayersOpen(false)
-            setActiveTool("measure")
-          }}
-        >
-          <span>MS</span>
-          Measure
-        </button>
-        <button
-          className={`home-tool-button${layersOpen ? " active" : ""}`}
-          type="button"
-          onClick={toggleLayers}
-        >
-          <span>LY</span>
-          Layers
-        </button>
+              setIntelOpen(false)
+              setWeatherOpen(false)
+              closeFieldNote()
+              closeWaypoint()
+              setLayersOpen(false)
+              setActiveTool("measure")
+            }}
+          >
+            <span>MS</span>
+            Measure
+          </button>
+        )}
+        {(homeMapControls.layers ?? true) && (
+          <button
+            className={`home-tool-button${layersOpen ? " active" : ""}`}
+            type="button"
+            onClick={toggleLayers}
+          >
+            <span>LY</span>
+            Layers
+          </button>
+        )}
       </div>
 
-      {layersOpen && (
+      {layersOpen && (homeMapControls.layers ?? true) && (
         <section className="home-layer-picker" aria-label="Map layers">
           {([
             ["standard", "Standard"],
@@ -1054,7 +1100,7 @@ function Home({
         </section>
       )}
 
-      {weatherOpen && (
+      {weatherOpen && (homeMapControls.weather ?? true) && (
         <section className="map-tool-card home-map-tool-card map-weather-card">
           <header>
             <h2>{weatherStatus || "Weather"}</h2>
@@ -1071,7 +1117,7 @@ function Home({
         </section>
       )}
 
-      {intelOpen && (
+      {intelOpen && (homeMapControls.intel ?? true) && (
         <section className="map-tool-card home-map-tool-card">
           <header>
             <h2>Murray Cod Intel</h2>
@@ -1093,7 +1139,7 @@ function Home({
         </section>
       )}
 
-      {fieldNoteOpen && (
+      {fieldNoteOpen && (homeMapControls.fieldNote ?? true) && (
         <section className="map-tool-card home-map-tool-card field-note-sheet">
           <header className="field-note-header">
             <div>
@@ -1162,7 +1208,7 @@ function Home({
         </section>
       )}
 
-      {waypointOpen && (
+      {waypointOpen && (homeMapControls.waypoint ?? true) && (
         <section className="map-tool-card home-map-tool-card">
           <header>
             <h2>Waypoint</h2>
@@ -1202,7 +1248,7 @@ function Home({
         </section>
       )}
 
-      {activeTool === "measure" && (
+      {activeTool === "measure" && (homeMapControls.measure ?? true) && (
         <section className="measure-readout home-measure-readout measure-profile-card">
           <header>
             <button type="button" onClick={() => setMeasurePoints((current) => current.slice(0, -1))}>

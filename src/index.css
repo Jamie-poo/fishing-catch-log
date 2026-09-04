@@ -313,18 +313,17 @@ h3 {
 
 .map-top-panel {
   position: absolute;
-  left: 12px;
-  right: 12px;
-  top: calc(20px + env(safe-area-inset-top));
+  left: 14px;
+  right: 14px;
+  top: calc(18px + env(safe-area-inset-top));
   z-index: 400;
   display: grid;
-  grid-template-columns: 74px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 9px;
   align-items: center;
-  min-height: 112px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 18px;
-  padding: 12px;
+  border-radius: 14px;
+  padding: 10px 12px;
   color: var(--text-on-dark);
   background: linear-gradient(135deg, rgba(10, 16, 14, 0.86), rgba(26, 35, 31, 0.72));
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
@@ -341,27 +340,16 @@ h3 {
   }
 }
 
-.map-location-preview {
-  width: 74px;
-  height: 74px;
-  border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(7, 151, 166, 0.72), transparent 56%),
-    linear-gradient(315deg, rgba(80, 163, 92, 0.72), transparent 58%),
-    #1d2a26;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-}
-
 .map-top-copy {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .map-top-panel h1 {
   overflow: hidden;
   color: var(--text-on-dark);
-  font-size: 1.15rem;
+  font-size: 1.03rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -372,10 +360,10 @@ h3 {
   align-items: center;
   gap: 6px;
   border-radius: 999px;
-  padding: 4px 9px;
+  padding: 3px 8px;
   background: rgba(64, 179, 96, 0.18);
   color: #80e69b;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 800;
 }
 
@@ -388,10 +376,8 @@ h3 {
 }
 
 .map-metrics {
-  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
@@ -405,22 +391,23 @@ h3 {
 .map-metrics strong {
   display: block;
   color: #f8fbf6;
-  font-size: 1rem;
+  font-size: 0.92rem;
   line-height: 1;
 }
 
 .map-metrics span {
   display: block;
   color: rgba(248, 251, 246, 0.86);
-  font-size: 0.72rem;
+  font-size: 0.66rem;
 }
 
 .map-metrics button {
-  min-height: 38px;
+  min-height: 34px;
   border: 1px solid rgba(97, 218, 124, 0.54);
   border-radius: 8px;
   background: rgba(64, 179, 96, 0.16);
   color: #9ff0aa;
+  font-size: 0.84rem;
   font-weight: 800;
 }
 
@@ -664,7 +651,7 @@ h3 {
 
 .home-right-tools {
   right: 10px;
-  top: calc(188px + env(safe-area-inset-top));
+  top: calc(150px + env(safe-area-inset-top));
 }
 
 .home-right-tools .home-tool-button {

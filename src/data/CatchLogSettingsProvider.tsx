@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { catchFieldGroups, fieldId } from "./catchStructure"
+import { defaultHomeMapControls } from "./homeMapControls"
+import { defaultHomeSummary } from "./homeSummary"
 import { defaultMapFilters } from "./mapFilters"
 import { defaultMapWeatherConditions } from "./mapWeather"
 import {
@@ -21,6 +23,8 @@ function defaultSettings(): VisibilitySettings {
         group.fields.map((field) => [fieldId(group.key, field.key), true])
       )
     ),
+    homeMapControls: defaultHomeMapControls(),
+    homeSummary: defaultHomeSummary(),
     mapFilters: defaultMapFilters(),
     mapWeatherConditions: defaultMapWeatherConditions(),
     lengthUnit: "cm",
@@ -46,6 +50,11 @@ function loadSettings(): VisibilitySettings {
       ...parsed,
       groups: { ...defaults.groups, ...parsed.groups },
       fields: { ...defaults.fields, ...parsed.fields },
+      homeMapControls: {
+        ...defaults.homeMapControls,
+        ...parsed.homeMapControls,
+      },
+      homeSummary: { ...defaults.homeSummary, ...parsed.homeSummary },
       mapFilters: { ...defaults.mapFilters, ...parsed.mapFilters },
       mapWeatherConditions: {
         ...defaults.mapWeatherConditions,
@@ -76,6 +85,16 @@ export function CatchLogSettingsProvider({ children }: { children: ReactNode }) 
         setSettings((current) => ({
           ...current,
           fields: { ...current.fields, [fieldId(groupKey, fieldKey)]: visible },
+        })),
+      setHomeMapControlVisible: (key: string, visible: boolean) =>
+        setSettings((current) => ({
+          ...current,
+          homeMapControls: { ...current.homeMapControls, [key]: visible },
+        })),
+      setHomeSummaryVisible: (key: string, visible: boolean) =>
+        setSettings((current) => ({
+          ...current,
+          homeSummary: { ...current.homeSummary, [key]: visible },
         })),
       setMapFilterVisible: (key: string, visible: boolean) =>
         setSettings((current) => ({

@@ -8,6 +8,8 @@ export type PressureTrendHours = 3 | 6 | 12 | 24 | 72
 export type VisibilitySettings = {
   groups: Record<string, boolean>
   fields: Record<string, boolean>
+  homeMapControls: Record<string, boolean>
+  homeSummary: Record<string, boolean>
   mapFilters: Record<string, boolean>
   mapWeatherConditions: Record<string, boolean>
   lengthUnit: LengthUnit
@@ -19,6 +21,8 @@ export type VisibilitySettings = {
 export type SettingsContextValue = VisibilitySettings & {
   setGroupVisible: (key: string, visible: boolean) => void
   setFieldVisible: (groupKey: string, fieldKey: string, visible: boolean) => void
+  setHomeMapControlVisible: (key: string, visible: boolean) => void
+  setHomeSummaryVisible: (key: string, visible: boolean) => void
   setMapFilterVisible: (key: string, visible: boolean) => void
   setMapWeatherConditionVisible: (key: string, visible: boolean) => void
   setLengthUnit: (unit: LengthUnit) => void

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { catchFieldGroups, fieldId } from "../../data/catchStructure"
 import type { DepthUnit, LengthUnit, PressureTrendHours, WeightUnit } from "../../data/catchLogSettingsContext"
+import { homeMapControlOptions } from "../../data/homeMapControls"
+import { homeSummaryOptions } from "../../data/homeSummary"
 import { mapFilterOptions } from "../../data/mapFilters"
 import { mapWeatherOptions } from "../../data/mapWeather"
 import { applyThemePreference, getSavedTheme, type ThemePreference } from "../../data/theme"
@@ -14,6 +16,8 @@ function Settings({ onBackHome }: SettingsProps) {
     groups,
     fields,
     depthUnit,
+    homeMapControls,
+    homeSummary,
     lengthUnit,
     mapFilters,
     mapWeatherConditions,
@@ -22,6 +26,8 @@ function Settings({ onBackHome }: SettingsProps) {
     setDepthUnit,
     setGroupVisible,
     setFieldVisible,
+    setHomeMapControlVisible,
+    setHomeSummaryVisible,
     setLengthUnit,
     setMapFilterVisible,
     setMapWeatherConditionVisible,
@@ -118,6 +124,43 @@ function Settings({ onBackHome }: SettingsProps) {
               }
             /> Show pressure trend details dropdown
           </label>
+        </div>
+      </details>
+
+      <h2 className="section-heading">Edit Home Map</h2>
+      <p className="page-note">Choose what appears on the home map screen.</p>
+
+      <details className="catch-detail-section">
+        <summary><strong>Home Summary Card</strong></summary>
+        <div className="settings-check-grid">
+          {homeSummaryOptions.map((option) => (
+            <label key={option.key}>
+              <input
+                type="checkbox"
+                checked={homeSummary[option.key] ?? true}
+                onChange={(event) =>
+                  setHomeSummaryVisible(option.key, event.target.checked)
+                }
+              /> {option.label}
+            </label>
+          ))}
+        </div>
+      </details>
+
+      <details className="catch-detail-section">
+        <summary><strong>Home Map Buttons</strong></summary>
+        <div className="settings-check-grid">
+          {homeMapControlOptions.map((option) => (
+            <label key={option.key}>
+              <input
+                type="checkbox"
+                checked={homeMapControls[option.key] ?? true}
+                onChange={(event) =>
+                  setHomeMapControlVisible(option.key, event.target.checked)
+                }
+              /> {option.label}
+            </label>
+          ))}
         </div>
       </details>
 
