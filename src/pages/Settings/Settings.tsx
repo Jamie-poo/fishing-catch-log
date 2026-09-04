@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { catchFieldGroups, fieldId } from "../../data/catchStructure"
 import type { DepthUnit, LengthUnit, PressureTrendHours, WeightUnit } from "../../data/catchLogSettingsContext"
 import { mapFilterOptions } from "../../data/mapFilters"
+import { mapWeatherOptions } from "../../data/mapWeather"
 import { applyThemePreference, getSavedTheme, type ThemePreference } from "../../data/theme"
 import { useCatchLogSettings } from "../../data/useCatchLogSettings"
 
@@ -15,6 +16,7 @@ function Settings({ onBackHome }: SettingsProps) {
     depthUnit,
     lengthUnit,
     mapFilters,
+    mapWeatherConditions,
     pressureTrendHours,
     weightUnit,
     setDepthUnit,
@@ -22,6 +24,7 @@ function Settings({ onBackHome }: SettingsProps) {
     setFieldVisible,
     setLengthUnit,
     setMapFilterVisible,
+    setMapWeatherConditionVisible,
     setPressureTrendHours,
     setWeightUnit,
   } = useCatchLogSettings()
@@ -115,6 +118,26 @@ function Settings({ onBackHome }: SettingsProps) {
               }
             /> Show pressure trend details dropdown
           </label>
+        </div>
+      </details>
+
+      <h2 className="section-heading">Edit Map Weather</h2>
+      <p className="page-note">Choose which live weather conditions appear on the Catch Map.</p>
+
+      <details className="catch-detail-section">
+        <summary><strong>Map Weather Conditions</strong></summary>
+        <div className="settings-check-grid">
+          {mapWeatherOptions.map((condition) => (
+            <label key={condition.key}>
+              <input
+                type="checkbox"
+                checked={mapWeatherConditions[condition.key] ?? true}
+                onChange={(event) =>
+                  setMapWeatherConditionVisible(condition.key, event.target.checked)
+                }
+              /> {condition.label}
+            </label>
+          ))}
         </div>
       </details>
 

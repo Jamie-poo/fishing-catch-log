@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { catchFieldGroups, fieldId } from "./catchStructure"
 import { defaultMapFilters } from "./mapFilters"
+import { defaultMapWeatherConditions } from "./mapWeather"
 import {
   SettingsContext,
   type DepthUnit,
@@ -21,6 +22,7 @@ function defaultSettings(): VisibilitySettings {
       )
     ),
     mapFilters: defaultMapFilters(),
+    mapWeatherConditions: defaultMapWeatherConditions(),
     lengthUnit: "cm",
     weightUnit: "kg",
     depthUnit: "m",
@@ -45,6 +47,10 @@ function loadSettings(): VisibilitySettings {
       groups: { ...defaults.groups, ...parsed.groups },
       fields: { ...defaults.fields, ...parsed.fields },
       mapFilters: { ...defaults.mapFilters, ...parsed.mapFilters },
+      mapWeatherConditions: {
+        ...defaults.mapWeatherConditions,
+        ...parsed.mapWeatherConditions,
+      },
     }
   } catch {
     return defaults
@@ -75,6 +81,14 @@ export function CatchLogSettingsProvider({ children }: { children: ReactNode }) 
         setSettings((current) => ({
           ...current,
           mapFilters: { ...current.mapFilters, [key]: visible },
+        })),
+      setMapWeatherConditionVisible: (key: string, visible: boolean) =>
+        setSettings((current) => ({
+          ...current,
+          mapWeatherConditions: {
+            ...current.mapWeatherConditions,
+            [key]: visible,
+          },
         })),
       setLengthUnit: (lengthUnit: LengthUnit) =>
         setSettings((current) => ({ ...current, lengthUnit })),

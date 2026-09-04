@@ -543,6 +543,180 @@ h3 {
   border: 1px solid var(--border);
 }
 
+.map-panel-tools {
+  position: relative;
+}
+
+.tool-map {
+  height: 100%;
+  width: 100%;
+}
+
+.map-panel-3d .leaflet-container {
+  filter: contrast(1.08) saturate(1.08);
+}
+
+.map-panel-3d::after {
+  position: absolute;
+  right: 12px;
+  bottom: 86px;
+  z-index: 520;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(17, 24, 22, 0.76);
+  color: white;
+  content: "3D";
+  font-size: 0.72rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.map-tool-bar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 10px;
+  z-index: 700;
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.map-tool-bar button {
+  min-height: 36px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--text);
+  font-size: 0.74rem;
+  font-weight: 800;
+  box-shadow: 0 8px 22px rgba(17, 24, 22, 0.18);
+}
+
+.map-tool-bar button.active {
+  background: var(--primary);
+  color: white;
+}
+
+.map-tool-card,
+.measure-readout {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  z-index: 710;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 16px 36px rgba(17, 24, 22, 0.22);
+}
+
+.map-tool-card {
+  bottom: 10px;
+  display: grid;
+  gap: 10px;
+  max-height: 70%;
+  overflow: auto;
+  padding: 12px;
+}
+
+.map-tool-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.map-tool-card header button,
+.measure-readout button {
+  min-height: 32px;
+  border-radius: var(--radius);
+  padding: 0 10px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.map-weather-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.map-weather-grid p {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px;
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.map-weather-grid strong {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.map-weather-grid span {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.map-card-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.measure-readout {
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.measure-readout strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.map-tool-marker {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.map-tool-marker span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 3px solid white;
+  border-radius: 50%;
+  color: white;
+  font-size: 0.78rem;
+  font-weight: 900;
+  box-shadow: 0 8px 18px rgba(17, 24, 22, 0.28);
+}
+
+.waypoint-marker span {
+  background: var(--primary);
+}
+
+.field-note-marker span {
+  background: var(--accent);
+  color: #111816;
+}
+
 .catch-log-page {
   display: grid;
   align-content: start;
