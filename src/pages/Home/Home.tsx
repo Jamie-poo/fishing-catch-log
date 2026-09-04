@@ -295,7 +295,7 @@ function Home({
     latitude: -37.25,
     longitude: 144.9,
   })
-  const [mapStyle, setMapStyle] = useState<MapStyle>("standard")
+  const [mapStyle, setMapStyle] = useState<MapStyle>("satellite")
   const [is3d, setIs3d] = useState(false)
   const [activeTool, setActiveTool] = useState<MapTool>("browse")
   const [weatherValues, setWeatherValues] = useState<Record<string, string>>({})
@@ -582,21 +582,16 @@ function Home({
         )}
       </MapContainer>
 
-      <button
-        type="button"
-        className="recenter-button"
-        disabled={!currentLocation}
-        onClick={() => setRecenterRequest((current) => current + 1)}
-      >
-        Recenter
-      </button>
-
       <section className="map-top-panel" aria-label="Current fishing summary">
-        <h1>{locationTitle}</h1>
+        <div className="map-location-preview" aria-hidden="true"></div>
+        <div className="map-top-copy">
+          <h1>{locationTitle}</h1>
+          <span className="gps-pill">{locationStatus}</span>
+        </div>
         <div className="map-metrics">
           <div>
             <strong>{new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</strong>
-            <span>{locationStatus}</span>
+            <span>time</span>
           </div>
           <div>
             <strong>{catches.length}</strong>
@@ -612,23 +607,9 @@ function Home({
         </div>
       </section>
 
-      <div className="map-tool-bar home-map-tool-bar" aria-label="Map tools">
+      <div className="home-side-tools home-left-tools" aria-label="Quick actions">
         <button
-          className={weatherOpen ? "active" : ""}
-          type="button"
-          onClick={() => void openWeatherPanel()}
-        >
-          Weather
-        </button>
-        <button
-          className={intelOpen ? "active" : ""}
-          type="button"
-          onClick={() => void openIntelPanel()}
-        >
-          Intel
-        </button>
-        <button
-          className={fieldNoteOpen ? "active" : ""}
+          className={`home-tool-button primary-map-tool${fieldNoteOpen ? " active" : ""}`}
           type="button"
           onClick={() => {
             setFieldNoteOpen((open) => !open)
@@ -636,10 +617,11 @@ function Home({
             setWeatherOpen(false)
           }}
         >
+          <span>FN</span>
           Field Note
         </button>
         <button
-          className={activeTool === "waypoint" ? "active" : ""}
+          className={`home-tool-button${activeTool === "waypoint" ? " active" : ""}`}
           type="button"
           onClick={() => {
             setActiveTool(activeTool === "waypoint" ? "browse" : "waypoint")
@@ -649,34 +631,75 @@ function Home({
             setWeatherOpen(false)
           }}
         >
+          <span>WP</span>
           Waypoint
         </button>
         <button
-          className={mapStyle === "topo" ? "active" : ""}
+          className="home-tool-button record-map-tool"
+          type="button"
+          onClick={onRecordCatch}
+        >
+          <span>+</span>
+          Record
+        </button>
+        <button
+          type="button"
+          className="home-tool-button"
+          disabled={!currentLocation}
+          onClick={() => setRecenterRequest((current) => current + 1)}
+        >
+          <span>GPS</span>
+          Recenter
+        </button>
+      </div>
+
+      <div className="home-side-tools home-right-tools" aria-label="Map tools">
+        <button
+          className={`home-tool-button${weatherOpen ? " active" : ""}`}
+          type="button"
+          onClick={() => void openWeatherPanel()}
+        >
+          <span>WX</span>
+          Weather
+        </button>
+        <button
+          className={`home-tool-button${intelOpen ? " active" : ""}`}
+          type="button"
+          onClick={() => void openIntelPanel()}
+        >
+          <span>IN</span>
+          Intel
+        </button>
+        <button
+          className={`home-tool-button${mapStyle === "topo" ? " active" : ""}`}
           type="button"
           onClick={() => toggleMapStyle("topo")}
         >
+          <span>TO</span>
           Topo
         </button>
         <button
-          className={is3d ? "active" : ""}
+          className={`home-tool-button${is3d ? " active" : ""}`}
           type="button"
           onClick={() => setIs3d((enabled) => !enabled)}
         >
+          <span>3D</span>
           3D
         </button>
         <button
-          className={activeTool === "measure" ? "active" : ""}
+          className={`home-tool-button${activeTool === "measure" ? " active" : ""}`}
           type="button"
           onClick={() => setActiveTool(activeTool === "measure" ? "browse" : "measure")}
         >
+          <span>MS</span>
           Measure
         </button>
         <button
-          className={mapStyle === "satellite" ? "active" : ""}
+          className={`home-tool-button${mapStyle === "satellite" ? " active" : ""}`}
           type="button"
           onClick={() => toggleMapStyle("satellite")}
         >
+          <span>ST</span>
           Sat
         </button>
       </div>
@@ -806,7 +829,8 @@ function Home({
           onClick={onRecordCatch}
           aria-label="Record catch"
         >
-          +
+          <span>+</span>
+          <small>Record</small>
         </button>
         <button type="button" onClick={onOpenStats}>
           <span>Stats</span>
