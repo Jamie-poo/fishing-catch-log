@@ -1196,7 +1196,37 @@ h3 {
 }
 
 .home-map-3d .leaflet-container {
-  filter: contrast(1.08) saturate(1.1);
+  overflow: hidden;
+  background: #101612;
+  perspective: 900px;
+}
+
+.home-map-3d .leaflet-map-pane {
+  transform: rotateX(52deg) scale(1.42) translateY(-10%);
+  transform-origin: 50% 42%;
+  filter: contrast(1.14) saturate(1.2) brightness(0.92);
+}
+
+.home-map-3d .leaflet-tile-pane {
+  filter: drop-shadow(0 28px 24px rgba(0, 0, 0, 0.28));
+}
+
+.home-map-3d .leaflet-marker-pane,
+.home-map-3d .leaflet-overlay-pane,
+.home-map-3d .leaflet-popup-pane,
+.home-map-3d .leaflet-tooltip-pane {
+  transform-style: preserve-3d;
+}
+
+.home-map-3d .home-map::after {
+  position: absolute;
+  inset: 0;
+  z-index: 420;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 28%),
+    radial-gradient(circle at 50% 100%, transparent 42%, rgba(0, 0, 0, 0.24) 100%);
+  content: "";
+  pointer-events: none;
 }
 
 .home-map-3d::after {

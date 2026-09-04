@@ -820,6 +820,19 @@ function Home({
     setLayersOpen(false)
   }
 
+  function toggle3dMode() {
+    setIs3d((enabled) => {
+      const nextEnabled = !enabled
+
+      if (nextEnabled) {
+        setMapStyle("topo")
+        setLayersOpen(false)
+      }
+
+      return nextEnabled
+    })
+  }
+
   return (
     <main className={`phone-map-screen${is3d ? " home-map-3d" : ""}`}>
       <MapContainer
@@ -1041,7 +1054,7 @@ function Home({
           <button
             className={`home-tool-button${is3d ? " active" : ""}`}
             type="button"
-            onClick={() => setIs3d((enabled) => !enabled)}
+            onClick={toggle3dMode}
           >
             <span>3D</span>
             3D
