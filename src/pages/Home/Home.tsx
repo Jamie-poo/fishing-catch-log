@@ -115,7 +115,9 @@ type MapViewportProps = {
 
 type MapToolEventsProps = {
   activeTool: MapTool
+  fieldNoteOpen: boolean
   onCenterChange: (point: LocationPoint) => void
+  onFieldNotePoint: (point: LocationPoint) => void
   onMeasurePoint: (point: LocationPoint) => void
   onWaypointPoint: (point: LocationPoint) => void
 }
@@ -358,7 +360,9 @@ function MapViewport({ currentLocation, points, recenterRequest }: MapViewportPr
 
 function MapToolEvents({
   activeTool,
+  fieldNoteOpen,
   onCenterChange,
+  onFieldNotePoint,
   onMeasurePoint,
   onWaypointPoint,
 }: MapToolEventsProps) {
@@ -376,6 +380,11 @@ function MapToolEvents({
 
       if (activeTool === "waypoint") {
         onWaypointPoint(point)
+        return
+      }
+
+      if (fieldNoteOpen) {
+        onFieldNotePoint(point)
       }
     },
     moveend() {
@@ -810,7 +819,9 @@ function Home({
         />
         <MapToolEvents
           activeTool={activeTool}
+          fieldNoteOpen={fieldNoteOpen}
           onCenterChange={setMapCenter}
+          onFieldNotePoint={setFieldNotePoint}
           onMeasurePoint={(point) => setMeasurePoints((current) => [...current, point])}
           onWaypointPoint={(point) => {
             setWaypointPoint(point)
@@ -943,7 +954,7 @@ function Home({
 
       <div className="home-side-tools home-left-tools" aria-label="Quick actions">
         <button
-          className={`home-tool-button primary-map-tool${fieldNoteOpen ? " active" : ""}`}
+          className={`home-tool-button${fieldNoteOpen ? " active" : ""}`}
           type="button"
           onClick={toggleFieldNote}
         >

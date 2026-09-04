@@ -976,7 +976,7 @@ h3 {
 
 .field-note-sheet {
   gap: 14px;
-  max-height: min(68svh, 620px);
+  max-height: min(48svh, 460px);
 }
 
 .field-note-header {
