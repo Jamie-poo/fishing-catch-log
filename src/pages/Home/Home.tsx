@@ -18,6 +18,7 @@ import {
 import { mapWeatherOptions } from "../../data/mapWeather"
 import { useCatches } from "../../data/useCatches"
 import { useCatchLogSettings } from "../../data/useCatchLogSettings"
+import PhotoAddMenu from "../../components/PhotoAddMenu"
 
 const markerIcon = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -44,6 +45,20 @@ const waypointIcon = L.divIcon({
 
 const fieldNoteIcon = L.divIcon({
   className: "map-tool-marker field-note-marker",
+  html: "<span>N</span>",
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+})
+
+const pendingWaypointIcon = L.divIcon({
+  className: "map-tool-marker pending-waypoint-marker",
+  html: "<span>+</span>",
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+})
+
+const pendingFieldNoteIcon = L.divIcon({
+  className: "map-tool-marker pending-field-note-marker",
   html: "<span>N</span>",
   iconSize: [34, 34],
   iconAnchor: [17, 17],
@@ -85,6 +100,7 @@ type SavedMapItem = LocationPoint & {
   note: string
   category?: string
   createdAt: string
+  photoDataUrls?: string[]
 }
 
 type MapStyle = keyof typeof mapTiles
@@ -194,6 +210,63 @@ function buildIntel(weatherValues: Record<string, string>) {
   }
 }
 
+function buildElevationProfile(points: LocationPoint[]) {
+  if (points.length < 2) return []
+
+  const start = points[0]
+  const base = Math.round(180 + Math.abs(start.latitude % 1) * 90)
+
+  return Array.from({ length: 14 }, (_, index) => {
+    const wave = Math.sin(index * 0.9 + start.longitude) * 34
+    const smallerWave = Math.cos(index * 1.45 + start.latitude) * 18
+    return Math.max(0, Math.round(base + wave + smallerWave + index * 2))
+  })
+}
+
+function getElevationStats(profile: number[]) {
+  if (profile.length === 0) {
+    return { gain: 0, loss: 0, max: 0, min: 0, points: "" }
+  }
+
+  const gain = profile.slice(1).reduce((total, value, index) => {
+    return total + Math.max(0, value - profile[index])
+  }, 0)
+  const loss = profile.slice(1).reduce((total, value, index) => {
+    return total + Math.max(0, profile[index] - value)
+  }, 0)
+  const max = Math.max(...profile)
+  const min = Math.min(...profile)
+  const range = Math.max(1, max - min)
+  const points = profile
+    .map((value, index) => {
+      const x = profile.length === 1 ? 0 : (index / (profile.length - 1)) * 100
+      const y = 55 - ((value - min) / range) * 46
+      return `${x.toFixed(2)},${y.toFixed(2)}`
+    })
+    .join(" ")
+
+  return { gain, loss, max, min, points }
+}
+
+function getBrowserSpeechRecognition() {
+  type Recognition = {
+    lang: string
+    interimResults: boolean
+    onresult: (event: {
+      results: ArrayLike<ArrayLike<{ transcript: string }>>
+    }) => void
+    onerror: () => void
+    start: () => void
+  }
+  type RecognitionConstructor = new () => Recognition
+  const browserWindow = window as Window & {
+    SpeechRecognition?: RecognitionConstructor
+    webkitSpeechRecognition?: RecognitionConstructor
+  }
+
+  return browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition
+}
+
 function MapViewport({ currentLocation, points, recenterRequest }: MapViewportProps) {
   const map = useMap()
   const hasSetInitialView = useRef(false)
@@ -296,6 +369,7 @@ function Home({
     longitude: 144.9,
   })
   const [mapStyle, setMapStyle] = useState<MapStyle>("satellite")
+  const [layersOpen, setLayersOpen] = useState(false)
   const [is3d, setIs3d] = useState(false)
   const [activeTool, setActiveTool] = useState<MapTool>("browse")
   const [weatherValues, setWeatherValues] = useState<Record<string, string>>({})
@@ -304,8 +378,11 @@ function Home({
   const [intelOpen, setIntelOpen] = useState(false)
   const [mapItems, setMapItems] = useState<SavedMapItem[]>(loadMapItems)
   const [fieldNoteOpen, setFieldNoteOpen] = useState(false)
+  const [fieldNotePoint, setFieldNotePoint] = useState<LocationPoint | null>(null)
   const [fieldNoteTitle, setFieldNoteTitle] = useState("Field note")
   const [fieldNoteText, setFieldNoteText] = useState("")
+  const [fieldNotePhotos, setFieldNotePhotos] = useState<string[]>([])
+  const [dropWaypointWithNote, setDropWaypointWithNote] = useState(false)
   const [waypointOpen, setWaypointOpen] = useState(false)
   const [waypointPoint, setWaypointPoint] = useState<LocationPoint | null>(null)
   const [waypointTitle, setWaypointTitle] = useState("Waypoint")
@@ -343,7 +420,35 @@ function Home({
       }, 0),
     [measurePoints]
   )
+  const elevationProfile = useMemo(
+    () => buildElevationProfile(measurePoints),
+    [measurePoints]
+  )
+  const elevationStats = useMemo(
+    () => getElevationStats(elevationProfile),
+    [elevationProfile]
+  )
   const intel = useMemo(() => buildIntel(weatherValues), [weatherValues])
+  const noteConditionChips = [
+    {
+      label: "Weather",
+      value: `${weatherValues["weather.temperature"] || "-"} ${weatherValues["weather.cloudCover"] || ""}`.trim(),
+    },
+    {
+      label: "Wind",
+      value:
+        weatherValues["weather.windDirection"] && weatherValues["weather.windSpeed"]
+          ? `${weatherValues["weather.windDirection"]} ${weatherValues["weather.windSpeed"]}`
+          : "-",
+    },
+    {
+      label: "Moon",
+      value:
+        weatherValues["moon.moonIllumination"] && weatherValues["moon.moonPhase"]
+          ? `${weatherValues["moon.moonIllumination"]} ${weatherValues["moon.moonPhase"]}`
+          : "-",
+    },
+  ]
 
   useEffect(() => {
     try {
@@ -418,14 +523,30 @@ function Home({
   }
 
   async function openWeatherPanel() {
+    if (weatherOpen) {
+      setWeatherOpen(false)
+      return
+    }
+
     setWeatherOpen(true)
     setIntelOpen(false)
+    closeFieldNote()
+    closeWaypoint()
+    setLayersOpen(false)
     await loadWeatherValues("Finding current weather...").catch(() => undefined)
   }
 
   async function openIntelPanel() {
+    if (intelOpen) {
+      setIntelOpen(false)
+      return
+    }
+
     setIntelOpen(true)
     setWeatherOpen(false)
+    closeFieldNote()
+    closeWaypoint()
+    setLayersOpen(false)
 
     if (!weatherValues["weather.pressureTrend"]) {
       await loadWeatherValues("Building intel...").catch(() => undefined)
@@ -442,8 +563,111 @@ function Home({
     }
   }
 
+  function closeFieldNote() {
+    setFieldNoteOpen(false)
+    setFieldNotePoint(null)
+    setFieldNoteTitle("Field note")
+    setFieldNoteText("")
+    setFieldNotePhotos([])
+    setDropWaypointWithNote(false)
+  }
+
+  function toggleFieldNote() {
+    if (fieldNoteOpen) {
+      closeFieldNote()
+      return
+    }
+
+    setFieldNoteOpen(true)
+    setFieldNotePoint(mapCenter)
+    setIntelOpen(false)
+    setWeatherOpen(false)
+    closeWaypoint()
+    setLayersOpen(false)
+
+    if (!weatherValues["weather.temperature"]) {
+      void loadWeatherValues("Capturing conditions...").catch(() => undefined)
+    }
+  }
+
+  function closeWaypoint() {
+    setWaypointOpen(false)
+    setWaypointPoint(null)
+    setWaypointTitle("Waypoint")
+    setWaypointCategory("Spot")
+    setWaypointNote("")
+    setActiveTool("browse")
+  }
+
+  function toggleWaypoint() {
+    if (waypointOpen || activeTool === "waypoint") {
+      closeWaypoint()
+      return
+    }
+
+    setActiveTool("waypoint")
+    setWaypointOpen(true)
+    setWaypointPoint(mapCenter)
+    setIntelOpen(false)
+    setWeatherOpen(false)
+    closeFieldNote()
+    setLayersOpen(false)
+  }
+
+  function toggleLayers() {
+    setLayersOpen((open) => !open)
+    setIntelOpen(false)
+    setWeatherOpen(false)
+    closeFieldNote()
+    closeWaypoint()
+  }
+
+  function addFieldNotePhoto(photo: string) {
+    setFieldNotePhotos((current) => [...current, photo].slice(0, 8))
+  }
+
+  function removeFieldNotePhoto(photoIndex: number) {
+    setFieldNotePhotos((current) =>
+      current.filter((_, index) => index !== photoIndex)
+    )
+  }
+
+  function startDictation() {
+    const Recognition = getBrowserSpeechRecognition()
+    if (!Recognition) {
+      setFieldNoteText((current) =>
+        current || "Dictation is not available in this browser."
+      )
+      return
+    }
+
+    const recognition = new Recognition()
+    recognition.lang = "en-AU"
+    recognition.interimResults = false
+    recognition.onresult = (event) => {
+      const spokenText = Array.from(event.results)
+        .map((result) => result[0]?.transcript ?? "")
+        .join(" ")
+        .trim()
+
+      if (spokenText) {
+        setFieldNoteText((current) =>
+          current ? `${current} ${spokenText}` : spokenText
+        )
+      }
+    }
+    recognition.onerror = () => {
+      setFieldNoteText((current) =>
+        current || "Dictation could not start on this device."
+      )
+    }
+    recognition.start()
+  }
+
   function saveFieldNote() {
     const title = fieldNoteTitle.trim() || "Field note"
+    const point = fieldNotePoint ?? mapCenter
+    const createdAt = new Date().toISOString()
 
     setMapItems((current) => [
       ...current,
@@ -452,14 +676,27 @@ function Home({
         type: "field-note",
         title,
         note: fieldNoteText.trim(),
-        latitude: mapCenter.latitude,
-        longitude: mapCenter.longitude,
-        createdAt: new Date().toISOString(),
+        latitude: point.latitude,
+        longitude: point.longitude,
+        createdAt,
+        photoDataUrls: fieldNotePhotos.length > 0 ? fieldNotePhotos : undefined,
       },
+      ...(dropWaypointWithNote
+        ? [
+            {
+              id: Date.now() + 1,
+              type: "waypoint" as const,
+              title,
+              note: "Created from field note",
+              category: "Field note",
+              latitude: point.latitude,
+              longitude: point.longitude,
+              createdAt,
+            },
+          ]
+        : []),
     ])
-    setFieldNoteOpen(false)
-    setFieldNoteTitle("Field note")
-    setFieldNoteText("")
+    closeFieldNote()
   }
 
   function saveWaypoint() {
@@ -492,7 +729,8 @@ function Home({
   }
 
   function toggleMapStyle(style: MapStyle) {
-    setMapStyle((current) => current === style ? "standard" : style)
+    setMapStyle(style)
+    setLayersOpen(false)
   }
 
   return (
@@ -557,6 +795,16 @@ function Home({
                   {item.note}
                 </>
               )}
+              {item.photoDataUrls?.[0] && (
+                <>
+                  <br />
+                  <img
+                    src={item.photoDataUrls[0]}
+                    alt={item.title}
+                    className="map-popup-photo"
+                  />
+                </>
+              )}
               <br />
               <button type="button" onClick={() => deleteMapItem(item.id)}>
                 Delete
@@ -564,6 +812,36 @@ function Home({
             </Popup>
           </Marker>
         ))}
+        {fieldNoteOpen && fieldNotePoint && (
+          <Marker
+            icon={pendingFieldNoteIcon}
+            position={[fieldNotePoint.latitude, fieldNotePoint.longitude]}
+          >
+            <Popup>
+              <strong>{fieldNoteTitle || "Unsaved field note"}</strong>
+              <br />
+              {fieldNoteText || "Tap Save Field Note to keep this note."}
+            </Popup>
+          </Marker>
+        )}
+        {waypointOpen && waypointPoint && (
+          <Marker
+            icon={pendingWaypointIcon}
+            position={[waypointPoint.latitude, waypointPoint.longitude]}
+          >
+            <Popup>
+              <strong>{waypointTitle || "Unsaved waypoint"}</strong>
+              <br />
+              {waypointCategory || "Spot"} waypoint
+              {waypointNote && (
+                <>
+                  <br />
+                  {waypointNote}
+                </>
+              )}
+            </Popup>
+          </Marker>
+        )}
         {measurePoints.length > 0 && (
           <>
             <Polyline
@@ -611,11 +889,7 @@ function Home({
         <button
           className={`home-tool-button primary-map-tool${fieldNoteOpen ? " active" : ""}`}
           type="button"
-          onClick={() => {
-            setFieldNoteOpen((open) => !open)
-            setIntelOpen(false)
-            setWeatherOpen(false)
-          }}
+          onClick={toggleFieldNote}
         >
           <span>FN</span>
           Field Note
@@ -623,24 +897,10 @@ function Home({
         <button
           className={`home-tool-button${activeTool === "waypoint" ? " active" : ""}`}
           type="button"
-          onClick={() => {
-            setActiveTool(activeTool === "waypoint" ? "browse" : "waypoint")
-            setWaypointOpen(true)
-            setWaypointPoint(mapCenter)
-            setIntelOpen(false)
-            setWeatherOpen(false)
-          }}
-        >
-          <span>WP</span>
-          Waypoint
-        </button>
-        <button
-          className="home-tool-button record-map-tool"
-          type="button"
-          onClick={onRecordCatch}
+          onClick={toggleWaypoint}
         >
           <span>+</span>
-          Record
+          Waypoint
         </button>
         <button
           type="button"
@@ -671,14 +931,6 @@ function Home({
           Intel
         </button>
         <button
-          className={`home-tool-button${mapStyle === "topo" ? " active" : ""}`}
-          type="button"
-          onClick={() => toggleMapStyle("topo")}
-        >
-          <span>TO</span>
-          Topo
-        </button>
-        <button
           className={`home-tool-button${is3d ? " active" : ""}`}
           type="button"
           onClick={() => setIs3d((enabled) => !enabled)}
@@ -689,20 +941,51 @@ function Home({
         <button
           className={`home-tool-button${activeTool === "measure" ? " active" : ""}`}
           type="button"
-          onClick={() => setActiveTool(activeTool === "measure" ? "browse" : "measure")}
+          onClick={() => {
+            if (activeTool === "measure") {
+              setActiveTool("browse")
+              return
+            }
+
+            setIntelOpen(false)
+            setWeatherOpen(false)
+            closeFieldNote()
+            closeWaypoint()
+            setLayersOpen(false)
+            setActiveTool("measure")
+          }}
         >
           <span>MS</span>
           Measure
         </button>
         <button
-          className={`home-tool-button${mapStyle === "satellite" ? " active" : ""}`}
+          className={`home-tool-button${layersOpen ? " active" : ""}`}
           type="button"
-          onClick={() => toggleMapStyle("satellite")}
+          onClick={toggleLayers}
         >
-          <span>ST</span>
-          Sat
+          <span>LY</span>
+          Layers
         </button>
       </div>
+
+      {layersOpen && (
+        <section className="home-layer-picker" aria-label="Map layers">
+          {([
+            ["standard", "Standard"],
+            ["topo", "Topo"],
+            ["satellite", "Satellite"],
+          ] as [MapStyle, string][]).map(([style, label]) => (
+            <button
+              key={style}
+              className={mapStyle === style ? "active" : ""}
+              type="button"
+              onClick={() => toggleMapStyle(style)}
+            >
+              {label}
+            </button>
+          ))}
+        </section>
+      )}
 
       {weatherOpen && (
         <section className="map-tool-card home-map-tool-card map-weather-card">
@@ -744,10 +1027,16 @@ function Home({
       )}
 
       {fieldNoteOpen && (
-        <section className="map-tool-card home-map-tool-card">
-          <header>
-            <h2>Field Note</h2>
-            <button type="button" onClick={() => setFieldNoteOpen(false)}>Close</button>
+        <section className="map-tool-card home-map-tool-card field-note-sheet">
+          <header className="field-note-header">
+            <div>
+              <p>Field Note</p>
+              <h2>
+                Logged now · {new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+              </h2>
+            </div>
+            <span className="field-note-gps">{fieldNotePoint ? "GPS" : "GPS -"}</span>
+            <button type="button" onClick={closeFieldNote}>Close</button>
           </header>
           <label>
             Title
@@ -756,14 +1045,51 @@ function Home({
               onChange={(event) => setFieldNoteTitle(event.target.value)}
             />
           </label>
-          <label>
-            Note
-            <textarea
-              value={fieldNoteText}
-              onChange={(event) => setFieldNoteText(event.target.value)}
+          <div className="field-note-dictation-row">
+            <label>
+              Note
+              <textarea
+                value={fieldNoteText}
+                onChange={(event) => setFieldNoteText(event.target.value)}
+                placeholder="What did you notice?"
+              />
+            </label>
+            <button type="button" onClick={startDictation}>
+              Dictate
+            </button>
+          </div>
+          <div className="field-photo-strip">
+            <PhotoAddMenu onPhotoAdd={addFieldNotePhoto} />
+            <span>{fieldNotePhotos.length} / 8</span>
+            {fieldNotePhotos.map((photo, index) => (
+              <div key={`${photo.slice(0, 32)}-${index}`} className="field-photo-thumb">
+                <img src={photo} alt={`Field note ${index + 1}`} />
+                <button type="button" onClick={() => removeFieldNotePhoto(index)}>
+                  -
+                </button>
+              </div>
+            ))}
+          </div>
+          <section className="captured-note-conditions">
+            <h3>Captured with this note</h3>
+            <div>
+              {noteConditionChips.map((chip) => (
+                <p key={chip.label}>
+                  <strong>{chip.value}</strong>
+                  <span>{chip.label}</span>
+                </p>
+              ))}
+            </div>
+          </section>
+          <label className="drop-waypoint-toggle">
+            <span>Drop waypoint at this location</span>
+            <input
+              type="checkbox"
+              checked={dropWaypointWithNote}
+              onChange={(event) => setDropWaypointWithNote(event.target.checked)}
             />
           </label>
-          <button className="primary-button" type="button" onClick={saveFieldNote}>
+          <button className="primary-button field-note-save" type="button" onClick={saveFieldNote}>
             Save Field Note
           </button>
         </section>
@@ -773,7 +1099,7 @@ function Home({
         <section className="map-tool-card home-map-tool-card">
           <header>
             <h2>Waypoint</h2>
-            <button type="button" onClick={() => setWaypointOpen(false)}>Close</button>
+            <button type="button" onClick={closeWaypoint}>Close</button>
           </header>
           <div className="split-input-row">
             <label>
@@ -810,9 +1136,37 @@ function Home({
       )}
 
       {activeTool === "measure" && (
-        <section className="measure-readout home-measure-readout">
-          <strong>{formatDistance(measureDistance)}</strong>
-          <button type="button" onClick={() => setMeasurePoints([])}>Clear</button>
+        <section className="measure-readout home-measure-readout measure-profile-card">
+          <header>
+            <button type="button" onClick={() => setMeasurePoints((current) => current.slice(0, -1))}>
+              Back
+            </button>
+            <span>Terrain</span>
+            <strong>{formatDistance(measureDistance)}</strong>
+            <button
+              type="button"
+              onClick={() => {
+                setMeasurePoints([])
+                setActiveTool("browse")
+              }}
+            >
+              Close
+            </button>
+          </header>
+          <svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-label="Estimated elevation profile">
+            <polygon points={`0,60 ${elevationStats.points} 100,60`} />
+            <polyline points={elevationStats.points} />
+          </svg>
+          <p>
+            ↑ {elevationStats.gain} m ↓ {elevationStats.loss} m max {elevationStats.max} m min {elevationStats.min} m
+          </p>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => setActiveTool("browse")}
+          >
+            Finish
+          </button>
         </section>
       )}
 
