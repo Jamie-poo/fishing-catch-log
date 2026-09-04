@@ -664,7 +664,7 @@ h3 {
 
 .home-right-tools {
   right: 10px;
-  top: calc(164px + env(safe-area-inset-top));
+  top: calc(188px + env(safe-area-inset-top));
 }
 
 .home-right-tools .home-tool-button {
@@ -701,6 +701,39 @@ h3 {
   font-size: 0.7rem;
   font-weight: 900;
   letter-spacing: 0;
+}
+
+.weather-button-icon {
+  position: relative;
+  min-width: 30px;
+  height: 22px;
+}
+
+.weather-button-icon::before,
+.weather-button-icon::after {
+  position: absolute;
+  content: "";
+}
+
+.weather-button-icon::before {
+  left: 3px;
+  right: 2px;
+  bottom: 3px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+}
+
+.weather-button-icon::after {
+  left: 8px;
+  top: 1px;
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  background: rgba(9, 15, 13, 0.96);
 }
 
 .home-tool-button.active {

@@ -919,7 +919,7 @@ function Home({
           type="button"
           onClick={() => void openWeatherPanel()}
         >
-          <span>WX</span>
+          <span className="weather-button-icon" aria-hidden="true"></span>
           Weather
         </button>
         <button
