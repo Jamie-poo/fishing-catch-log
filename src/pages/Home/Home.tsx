@@ -12,6 +12,7 @@ import {
 } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
 import { getAutomaticEnvironmentData } from "../../data/environmentData"
+import { formatLength, formatWeight } from "../../data/measurements"
 import {
   getLocationNameFromCoordinates,
 } from "../../data/location"
@@ -91,6 +92,8 @@ type MapViewportProps = {
   currentLocation: [number, number] | null
   points: [number, number][]
   recenterRequest: number
+  searchRequest: number
+  searchTarget: LocationPoint | null
 }
 
 type MapToolEventsProps = {
@@ -99,6 +102,13 @@ type MapToolEventsProps = {
   onCenterChange: (point: LocationPoint) => void
   onFieldNotePoint: (point: LocationPoint) => void
   onMeasurePoint: (point: LocationPoint) => void
+}
+
+type MapSearchResult = LocationPoint & {
+  id: string
+  label: string
+  detail: string
+  kind: "catch" | "note" | "place"
 }
 
 function loadMapItems() {
@@ -197,6 +207,10 @@ function formatDistance(meters: number) {
   }
 
   return `${Math.round(meters)} m`
+}
+
+function textMatchesSearch(value: string, query: string) {
+  return value.toLowerCase().includes(query.toLowerCase())
 }
 
 function isUnderCurrentLocation(
@@ -378,7 +392,13 @@ function getBrowserSpeechRecognition() {
   return browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition
 }
 
-function MapViewport({ currentLocation, points, recenterRequest }: MapViewportProps) {
+function MapViewport({
+  currentLocation,
+  points,
+  recenterRequest,
+  searchRequest,
+  searchTarget,
+}: MapViewportProps) {
   const map = useMap()
   const hasSetInitialView = useRef(false)
   const currentLocationRef = useRef(currentLocation)
@@ -407,6 +427,14 @@ function MapViewport({ currentLocation, points, recenterRequest }: MapViewportPr
 
     map.flyTo(latestLocation, Math.max(map.getZoom(), 15))
   }, [map, recenterRequest])
+
+  useEffect(() => {
+    if (!searchTarget || searchRequest === 0) {
+      return
+    }
+
+    map.flyTo([searchTarget.latitude, searchTarget.longitude], Math.max(map.getZoom(), 15))
+  }, [map, searchRequest, searchTarget])
 
   return null
 }
@@ -466,8 +494,10 @@ function Home({
   const {
     homeMapControls,
     homeSummary,
+    lengthUnit,
     mapWeatherConditions,
     pressureTrendHours,
+    weightUnit,
   } = useCatchLogSettings()
   const canUseGeolocation =
     typeof navigator !== "undefined" && "geolocation" in navigator
@@ -481,6 +511,11 @@ function Home({
     canUseGeolocation ? "current location" : "GPS unavailable"
   )
   const [mapSearchQuery, setMapSearchQuery] = useState("")
+  const [placeSearchResults, setPlaceSearchResults] = useState<MapSearchResult[]>([])
+  const [searchFocused, setSearchFocused] = useState(false)
+  const [searchRequest, setSearchRequest] = useState(0)
+  const [selectedSearchResult, setSelectedSearchResult] =
+    useState<MapSearchResult | null>(null)
   const [recenterRequest, setRecenterRequest] = useState(0)
   const [mapCenter, setMapCenter] = useState<LocationPoint>({
     latitude: -37.25,
@@ -567,6 +602,85 @@ function Home({
   const visibleMapItems = mapItems.filter(
     (item) => !isLegacyWaypointForFieldNote(item, mapItems)
   )
+  const localSearchResults = useMemo(() => {
+    const query = mapSearchQuery.trim()
+
+    if (query.length < 2) {
+      return []
+    }
+
+    const catchResults = mappedCatches
+      .filter((fish) =>
+        textMatchesSearch(
+          [
+            fish.species,
+            fish.locationName,
+            fish.notes,
+            formatLength(fish.length, lengthUnit),
+            formatWeight(fish.weight, weightUnit),
+            new Date(fish.dateTime).toLocaleString(),
+          ]
+            .filter(Boolean)
+            .join(" "),
+          query
+        )
+      )
+      .slice(0, 4)
+      .map<MapSearchResult>((fish) => ({
+        id: `catch-${fish.id}`,
+        kind: "catch",
+        label: fish.species || "Saved catch",
+        detail: [
+          fish.locationName || "Catch location",
+          formatLength(fish.length, lengthUnit),
+          formatWeight(fish.weight, weightUnit),
+        ].join(" · "),
+        latitude: fish.latitude!,
+        longitude: fish.longitude!,
+      }))
+
+    const noteResults = visibleMapItems
+      .filter((item) =>
+        textMatchesSearch(
+          [
+            item.title,
+            item.note,
+            item.category,
+            getMapItemTypeLabel(item),
+            ...(item.conditions?.flatMap((condition) => [
+              condition.label,
+              condition.value,
+            ]) ?? []),
+          ]
+            .filter(Boolean)
+            .join(" "),
+          query
+        )
+      )
+      .slice(0, 4)
+      .map<MapSearchResult>((item) => ({
+        id: `note-${item.id}`,
+        kind: "note",
+        label: item.title || getMapItemTypeLabel(item),
+        detail: item.note || getMapItemTypeLabel(item),
+        latitude: item.latitude,
+        longitude: item.longitude,
+      }))
+
+    return [...noteResults, ...catchResults].slice(0, 7)
+  }, [lengthUnit, mapSearchQuery, mappedCatches, visibleMapItems, weightUnit])
+  const visibleSearchResults = [
+    ...localSearchResults,
+    ...(mapSearchQuery.trim().length >= 3
+      ? placeSearchResults.filter(
+          (place) => !localSearchResults.some((result) => result.id === place.id)
+        )
+      : []),
+  ].slice(0, 8)
+  const showSearchResults =
+    searchFocused &&
+    mapSearchQuery.trim().length > 1 &&
+    visibleSearchResults.length > 0
   const summaryEnabled = homeSummary.panel ?? true
   const summaryCopyEnabled =
     (homeSummary.location ?? true) || (homeSummary.gpsStatus ?? true)
@@ -637,6 +751,93 @@ function Home({
 
     return () => controller.abort()
   }, [currentLocation])
+
+  useEffect(() => {
+    const query = mapSearchQuery.trim()
+
+    if (query.length < 3) return
+
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => {
+      const params = new URLSearchParams({
+        format: "jsonv2",
+        limit: "5",
+        countrycodes: "au",
+        q: query,
+      })
+
+      if (currentLocation) {
+        const [latitude, longitude] = currentLocation
+        params.set(
+          "viewbox",
+          `${longitude - 1},${latitude + 1},${longitude + 1},${latitude - 1}`
+        )
+        params.set("bounded", "0")
+      }
+
+      fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+        signal: controller.signal,
+      })
+        .then((response) => (response.ok ? response.json() : []))
+        .then(
+          (
+            results: Array<{
+              display_name?: string
+              lat?: string
+              lon?: string
+              place_id?: number
+              osm_id?: number
+              type?: string
+            }>
+          ) => {
+            if (controller.signal.aborted) {
+              return
+            }
+
+            const places = results.reduce<MapSearchResult[]>(
+              (current, result, index) => {
+                const latitude = Number(result.lat)
+                const longitude = Number(result.lon)
+
+                if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+                  return current
+                }
+
+                const displayName = result.display_name ?? "Map place"
+                const [label, ...detailParts] = displayName.split(", ")
+
+                current.push({
+                  id: `place-${result.place_id ?? result.osm_id ?? index}`,
+                  kind: "place",
+                  label,
+                  detail:
+                    detailParts.slice(0, 3).join(", ") ||
+                    result.type ||
+                    "Place",
+                  latitude,
+                  longitude,
+                })
+
+                return current
+              },
+              []
+            )
+
+            setPlaceSearchResults(places)
+          }
+        )
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setPlaceSearchResults([])
+          }
+        })
+    }, 450)
+
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
+    }
+  }, [currentLocation, mapSearchQuery])
 
   async function loadWeatherValues(statusLabel: string) {
     setWeatherStatus(statusLabel)
@@ -794,6 +995,18 @@ function Home({
     setLayersOpen(false)
   }
 
+  function selectSearchResult(result: MapSearchResult) {
+    setSelectedSearchResult(result)
+    setMapSearchQuery(result.label)
+    setSearchFocused(false)
+    setSearchRequest((current) => current + 1)
+    setWeatherOpen(false)
+    setIntelOpen(false)
+    setLayersOpen(false)
+    closeFieldNote()
+    setActiveTool("browse")
+  }
+
   return (
     <main className="phone-map-screen">
       <MapContainer
@@ -812,6 +1025,8 @@ function Home({
           currentLocation={currentLocation}
           points={points}
           recenterRequest={recenterRequest}
+          searchRequest={searchRequest}
+          searchTarget={selectedSearchResult}
         />
         <MapToolEvents
           activeTool={activeTool}
@@ -844,7 +1059,7 @@ function Home({
             icon={getMapItemIcon(item)}
             position={[item.latitude, item.longitude]}
           >
-            <Popup className="map-item-popup" maxWidth={228}>
+            <Popup className="map-item-popup" maxWidth={190}>
               <strong>{item.title}</strong>
               <br />
               {getMapItemTypeLabel(item)}
@@ -888,6 +1103,28 @@ function Home({
             </Popup>
           </Marker>
         )}
+        {selectedSearchResult && (
+          <CircleMarker
+            center={[
+              selectedSearchResult.latitude,
+              selectedSearchResult.longitude,
+            ]}
+            pathOptions={{
+              color: "#f8fbf6",
+              fillColor:
+                selectedSearchResult.kind === "place" ? "#0797a6" : "#40b360",
+              fillOpacity: 0.9,
+              weight: 3,
+            }}
+            radius={11}
+          >
+            <Popup className="map-item-popup" maxWidth={210}>
+              <strong>{selectedSearchResult.label}</strong>
+              <br />
+              {selectedSearchResult.detail}
+            </Popup>
+          </CircleMarker>
+        )}
         {measurePoints.length > 0 && (
           <>
             <Polyline
@@ -919,15 +1156,40 @@ function Home({
                 </div>
               )}
               {searchEnabled && (
-                <label className="map-search-field">
+                <div className="map-search-field">
                   <span>Search</span>
                   <input
                     aria-label="Search map"
                     placeholder="Search map..."
                     value={mapSearchQuery}
-                    onChange={(event) => setMapSearchQuery(event.target.value)}
+                    onBlur={() => window.setTimeout(() => setSearchFocused(false), 140)}
+                    onChange={(event) => {
+                      setMapSearchQuery(event.target.value)
+                      setSelectedSearchResult(null)
+                    }}
+                    onFocus={() => setSearchFocused(true)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && visibleSearchResults[0]) {
+                        selectSearchResult(visibleSearchResults[0])
+                      }
+                    }}
                   />
-                </label>
+                  {showSearchResults && (
+                    <div className="map-search-results">
+                      {visibleSearchResults.map((result) => (
+                        <button
+                          key={result.id}
+                          type="button"
+                          onClick={() => selectSearchResult(result)}
+                        >
+                          <small>{result.kind}</small>
+                          <strong>{result.label}</strong>
+                          <span>{result.detail}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
