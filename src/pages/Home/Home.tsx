@@ -1,16 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import L from "leaflet"
-import {
-  CircleMarker,
-  MapContainer,
-  Marker,
-  Polyline,
-  Popup,
-  TileLayer,
-  useMap,
-  useMapEvents,
-} from "react-leaflet"
-import "leaflet/dist/leaflet.css"
+import * as maplibregl from "maplibre-gl"
+import "maplibre-gl/dist/maplibre-gl.css"
 import { getAutomaticEnvironmentData } from "../../data/environmentData"
 import {
   getLocationNameFromCoordinates,
@@ -20,54 +10,10 @@ import { useCatches } from "../../data/useCatches"
 import { useCatchLogSettings } from "../../data/useCatchLogSettings"
 import PhotoAddMenu from "../../components/PhotoAddMenu"
 
-const markerIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-})
-
-const currentLocationIcon = L.divIcon({
-  className: "current-location-marker",
-  html: "<span></span>",
-  iconSize: [28, 28],
-  iconAnchor: [14, 14],
-})
-
-const waypointIcon = L.divIcon({
-  className: "map-tool-marker waypoint-marker",
-  html: "<span>W</span>",
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
-})
-
-const fieldNoteIcon = L.divIcon({
-  className: "map-tool-marker field-note-marker",
-  html: "<span>N</span>",
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
-})
-
-const pendingWaypointIcon = L.divIcon({
-  className: "map-tool-marker pending-waypoint-marker",
-  html: "<span>+</span>",
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
-})
-
-const pendingFieldNoteIcon = L.divIcon({
-  className: "map-tool-marker pending-field-note-marker",
-  html: "<span>N</span>",
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
-})
-
 const mapTiles = {
   standard: {
     attribution: "&copy; OpenStreetMap contributors",
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    url: "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
   },
   satellite: {
     attribution: "Tiles &copy; Esri",
@@ -75,8 +21,12 @@ const mapTiles = {
   },
   topo: {
     attribution: "&copy; OpenTopoMap contributors",
-    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    url: "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
   },
+}
+
+const terrainTiles = {
+  url: "https://tiles.mapterhorn.com/tilejson.json",
 }
 
 type HomeProps = {
@@ -107,19 +57,30 @@ type MapStyle = keyof typeof mapTiles
 
 type MapTool = "browse" | "waypoint" | "measure"
 
-type MapViewportProps = {
-  currentLocation: [number, number] | null
-  points: [number, number][]
-  recenterRequest: number
-}
-
-type MapToolEventsProps = {
+type HomeMapProps = {
   activeTool: MapTool
+  currentLocation: [number, number] | null
+  deleteMapItem: (itemId: number) => void
   fieldNoteOpen: boolean
-  onCenterChange: (point: LocationPoint) => void
+  fieldNotePoint: LocationPoint | null
+  fieldNoteText: string
+  fieldNoteTitle: string
+  is3d: boolean
+  mapItems: SavedMapItem[]
+  mappedCatches: ReturnType<typeof useCatches>["catches"]
+  mapStyle: MapStyle
+  measurePoints: LocationPoint[]
   onFieldNotePoint: (point: LocationPoint) => void
+  onCenterChange: (point: LocationPoint) => void
   onMeasurePoint: (point: LocationPoint) => void
   onWaypointPoint: (point: LocationPoint) => void
+  points: [number, number][]
+  recenterRequest: number
+  waypointCategory: string
+  waypointNote: string
+  waypointOpen: boolean
+  waypointPoint: LocationPoint | null
+  waypointTitle: string
 }
 
 function loadMapItems() {
@@ -159,6 +120,19 @@ function formatDistance(meters: number) {
   }
 
   return `${Math.round(meters)} m`
+}
+
+function distanceBetween(start: LocationPoint, end: LocationPoint) {
+  const earthRadius = 6_371_000
+  const startLat = (start.latitude * Math.PI) / 180
+  const endLat = (end.latitude * Math.PI) / 180
+  const deltaLat = ((end.latitude - start.latitude) * Math.PI) / 180
+  const deltaLng = ((end.longitude - start.longitude) * Math.PI) / 180
+  const a =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(startLat) * Math.cos(endLat) * Math.sin(deltaLng / 2) ** 2
+
+  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
 function parseFirstNumber(value: string | undefined) {
@@ -325,86 +299,489 @@ function getBrowserSpeechRecognition() {
   return browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition
 }
 
-function MapViewport({ currentLocation, points, recenterRequest }: MapViewportProps) {
-  const map = useMap()
-  const hasSetInitialView = useRef(false)
-  const currentLocationRef = useRef(currentLocation)
+function buildMapStyle(style: MapStyle, is3d: boolean) {
+  const selectedTiles = mapTiles[style]
 
-  useEffect(() => {
-    currentLocationRef.current = currentLocation
-  }, [currentLocation])
-
-  useEffect(() => {
-    if (hasSetInitialView.current) {
-      return
-    }
-
-    if (points.length > 0) {
-      hasSetInitialView.current = true
-      map.fitBounds(points, { padding: [44, 44], maxZoom: 13 })
-    }
-  }, [map, points])
-
-  useEffect(() => {
-    const latestLocation = currentLocationRef.current
-
-    if (!latestLocation || recenterRequest === 0) {
-      return
-    }
-
-    map.flyTo(latestLocation, Math.max(map.getZoom(), 15))
-  }, [map, recenterRequest])
-
-  return null
+  return {
+    version: 8,
+    sources: {
+      base: {
+        type: "raster",
+        tiles: [selectedTiles.url],
+        tileSize: 256,
+        attribution: selectedTiles.attribution,
+      },
+      terrainSource: {
+        type: "raster-dem",
+        url: terrainTiles.url,
+      },
+      hillshadeSource: {
+        type: "raster-dem",
+        url: terrainTiles.url,
+      },
+    },
+    layers: [
+      {
+        id: "base",
+        type: "raster",
+        source: "base",
+      },
+      ...(is3d
+        ? [
+            {
+              id: "terrain-shade",
+              type: "hillshade",
+              source: "hillshadeSource",
+              paint: {
+                "hillshade-exaggeration": 0.34,
+                "hillshade-shadow-color": "rgba(12, 18, 16, 0.36)",
+                "hillshade-highlight-color": "rgba(255, 255, 255, 0.3)",
+              },
+            },
+          ]
+        : []),
+    ],
+    terrain: is3d ? { source: "terrainSource", exaggeration: 1.35 } : undefined,
+    sky: is3d ? {} : undefined,
+  } as maplibregl.StyleSpecification
 }
 
-function MapToolEvents({
+function createMarkerElement(className: string, label?: string) {
+  const marker = document.createElement("div")
+  marker.className = className
+
+  if (label !== undefined) {
+    const markerLabel = document.createElement("span")
+    markerLabel.textContent = label
+    marker.appendChild(markerLabel)
+  }
+
+  return marker
+}
+
+function createPopupContent({
+  deleteLabel,
+  image,
+  lines,
+  onDelete,
+  title,
+}: {
+  deleteLabel?: string
+  image?: string
+  lines: string[]
+  onDelete?: () => void
+  title: string
+}) {
+  const content = document.createElement("div")
+  const heading = document.createElement("strong")
+  heading.textContent = title
+  content.appendChild(heading)
+
+  lines.filter(Boolean).forEach((line) => {
+    content.appendChild(document.createElement("br"))
+    content.appendChild(document.createTextNode(line))
+  })
+
+  if (image) {
+    const photo = document.createElement("img")
+    photo.src = image
+    photo.alt = title
+    photo.className = "map-popup-photo"
+    content.appendChild(document.createElement("br"))
+    content.appendChild(photo)
+  }
+
+  if (onDelete) {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.textContent = deleteLabel || "Delete"
+    button.addEventListener("click", onDelete)
+    content.appendChild(document.createElement("br"))
+    content.appendChild(button)
+  }
+
+  return content
+}
+
+function syncMeasureLayer(map: maplibregl.Map, measurePoints: LocationPoint[]) {
+  if (!map.isStyleLoaded()) {
+    map.once("style.load", () => syncMeasureLayer(map, measurePoints))
+    return
+  }
+
+  const lineData = {
+    type: "FeatureCollection",
+    features:
+      measurePoints.length > 1
+        ? [
+            {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: measurePoints.map((point) => [
+                  point.longitude,
+                  point.latitude,
+                ]),
+              },
+            },
+          ]
+        : [],
+  } as Parameters<maplibregl.GeoJSONSource["setData"]>[0]
+  const pointData = {
+    type: "FeatureCollection",
+    features: measurePoints.map((point) => ({
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "Point",
+        coordinates: [point.longitude, point.latitude],
+      },
+    })),
+  } as Parameters<maplibregl.GeoJSONSource["setData"]>[0]
+
+  const existingLine = map.getSource("measure-line") as
+    | maplibregl.GeoJSONSource
+    | undefined
+  const existingPoints = map.getSource("measure-points") as
+    | maplibregl.GeoJSONSource
+    | undefined
+
+  if (existingLine) {
+    existingLine.setData(lineData)
+  } else {
+    map.addSource("measure-line", { type: "geojson", data: lineData })
+    map.addLayer({
+      id: "measure-line",
+      type: "line",
+      source: "measure-line",
+      paint: {
+        "line-color": "#0797a6",
+        "line-width": 4,
+      },
+    })
+  }
+
+  if (existingPoints) {
+    existingPoints.setData(pointData)
+  } else {
+    map.addSource("measure-points", { type: "geojson", data: pointData })
+    map.addLayer({
+      id: "measure-points",
+      type: "circle",
+      source: "measure-points",
+      paint: {
+        "circle-color": "#0797a6",
+        "circle-radius": 5,
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-width": 2,
+      },
+    })
+  }
+}
+
+function HomeMap({
   activeTool,
+  currentLocation,
+  deleteMapItem,
   fieldNoteOpen,
-  onCenterChange,
+  fieldNotePoint,
+  fieldNoteText,
+  fieldNoteTitle,
+  is3d,
+  mapItems,
+  mappedCatches,
+  mapStyle,
+  measurePoints,
   onFieldNotePoint,
+  onCenterChange,
   onMeasurePoint,
   onWaypointPoint,
-}: MapToolEventsProps) {
-  const map = useMapEvents({
-    click(event) {
-      const point = {
-        latitude: event.latlng.lat,
-        longitude: event.latlng.lng,
-      }
-
-      if (activeTool === "measure") {
-        onMeasurePoint(point)
-        return
-      }
-
-      if (activeTool === "waypoint") {
-        onWaypointPoint(point)
-        return
-      }
-
-      if (fieldNoteOpen) {
-        onFieldNotePoint(point)
-      }
-    },
-    moveend() {
-      const center = map.getCenter()
-      onCenterChange({
-        latitude: center.lat,
-        longitude: center.lng,
-      })
-    },
+  points,
+  recenterRequest,
+  waypointCategory,
+  waypointNote,
+  waypointOpen,
+  waypointPoint,
+  waypointTitle,
+}: HomeMapProps) {
+  const mapContainerRef = useRef<HTMLDivElement | null>(null)
+  const mapRef = useRef<maplibregl.Map | null>(null)
+  const markerRefs = useRef<maplibregl.Marker[]>([])
+  const hasSetInitialView = useRef(false)
+  const mapStateRef = useRef({
+    activeTool,
+    fieldNoteOpen,
+    onCenterChange,
+    onFieldNotePoint,
+    onMeasurePoint,
+    onWaypointPoint,
   })
 
   useEffect(() => {
-    const center = map.getCenter()
-    onCenterChange({
-      latitude: center.lat,
-      longitude: center.lng,
-    })
-  }, [map, onCenterChange])
+    mapStateRef.current = {
+      activeTool,
+      fieldNoteOpen,
+      onCenterChange,
+      onFieldNotePoint,
+      onMeasurePoint,
+      onWaypointPoint,
+    }
+  }, [
+    activeTool,
+    fieldNoteOpen,
+    onCenterChange,
+    onFieldNotePoint,
+    onMeasurePoint,
+    onWaypointPoint,
+  ])
 
-  return null
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) {
+      return
+    }
+
+    const map = new maplibregl.Map({
+      attributionControl: false,
+      center: [144.9, -37.25],
+      container: mapContainerRef.current,
+      maxPitch: 85,
+      pitch: 0,
+      bearing: 0,
+      style: buildMapStyle("satellite", false),
+      zoom: 7,
+    })
+
+    map.addControl(
+      new maplibregl.AttributionControl({ compact: true }),
+      "bottom-right"
+    )
+    map.dragRotate.enable()
+    map.touchZoomRotate.enableRotation()
+    mapRef.current = map
+
+    map.on("click", (event: maplibregl.MapMouseEvent) => {
+      const point = {
+        latitude: event.lngLat.lat,
+        longitude: event.lngLat.lng,
+      }
+      const {
+        activeTool: currentTool,
+        fieldNoteOpen: currentFieldNoteOpen,
+        onFieldNotePoint: setFieldNotePoint,
+        onMeasurePoint: addMeasurePoint,
+        onWaypointPoint: setWaypointPoint,
+      } = mapStateRef.current
+
+      if (currentTool === "measure") {
+        addMeasurePoint(point)
+        return
+      }
+
+      if (currentTool === "waypoint") {
+        setWaypointPoint(point)
+        return
+      }
+
+      if (currentFieldNoteOpen) {
+        setFieldNotePoint(point)
+      }
+    })
+
+    map.on("moveend", () => {
+      const center = map.getCenter()
+      mapStateRef.current.onCenterChange({
+        latitude: center.lat,
+        longitude: center.lng,
+      })
+    })
+
+    return () => {
+      markerRefs.current.forEach((marker) => marker.remove())
+      markerRefs.current = []
+      map.remove()
+      mapRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const map = mapRef.current
+
+    if (!map) {
+      return
+    }
+
+    map.setStyle(buildMapStyle(mapStyle, is3d), { diff: false })
+    map.easeTo({
+      bearing: is3d ? -24 : 0,
+      duration: 700,
+      pitch: is3d ? 64 : 0,
+    })
+  }, [is3d, mapStyle])
+
+  useEffect(() => {
+    const map = mapRef.current
+
+    if (!map) {
+      return
+    }
+
+    syncMeasureLayer(map, measurePoints)
+  }, [is3d, mapStyle, measurePoints])
+
+  useEffect(() => {
+    const map = mapRef.current
+
+    if (!map) {
+      return
+    }
+
+    markerRefs.current.forEach((marker) => marker.remove())
+    markerRefs.current = []
+
+    const addMarker = (marker: maplibregl.Marker) => {
+      markerRefs.current.push(marker)
+      marker.addTo(map)
+    }
+
+    if (currentLocation) {
+      addMarker(
+        new maplibregl.Marker({
+          element: createMarkerElement("current-location-marker", ""),
+          pitchAlignment: "map",
+        })
+          .setLngLat([currentLocation[1], currentLocation[0]])
+          .setPopup(
+            new maplibregl.Popup().setDOMContent(
+              createPopupContent({ lines: [], title: "You are here" })
+            )
+          )
+      )
+    }
+
+    mappedCatches.forEach((fish) => {
+      addMarker(
+        new maplibregl.Marker({ color: "#1a8cff" })
+          .setLngLat([fish.longitude!, fish.latitude!])
+          .setPopup(
+            new maplibregl.Popup().setDOMContent(
+              createPopupContent({
+                lines: [fish.locationName || "Location saved"],
+                title: fish.species || "Unknown species",
+              })
+            )
+          )
+      )
+    })
+
+    mapItems.forEach((item) => {
+      addMarker(
+        new maplibregl.Marker({
+          element: createMarkerElement(
+            `map-tool-marker ${item.type === "waypoint" ? "waypoint-marker" : "field-note-marker"}`,
+            item.type === "waypoint" ? "W" : "N"
+          ),
+        })
+          .setLngLat([item.longitude, item.latitude])
+          .setPopup(
+            new maplibregl.Popup().setDOMContent(
+              createPopupContent({
+                image: item.photoDataUrls?.[0],
+                lines: [
+                  item.type === "waypoint" && item.category
+                    ? `${item.category} waypoint`
+                    : "Field note",
+                  item.note,
+                ],
+                onDelete: () => deleteMapItem(item.id),
+                title: item.title,
+              })
+            )
+          )
+      )
+    })
+
+    if (fieldNoteOpen && fieldNotePoint) {
+      addMarker(
+        new maplibregl.Marker({
+          element: createMarkerElement("map-tool-marker pending-field-note-marker", "N"),
+        })
+          .setLngLat([fieldNotePoint.longitude, fieldNotePoint.latitude])
+          .setPopup(
+            new maplibregl.Popup().setDOMContent(
+              createPopupContent({
+                lines: [fieldNoteText || "Tap Save Field Note to keep this note."],
+                title: fieldNoteTitle || "Unsaved field note",
+              })
+            )
+          )
+      )
+    }
+
+    if (waypointOpen && waypointPoint) {
+      addMarker(
+        new maplibregl.Marker({
+          element: createMarkerElement("map-tool-marker pending-waypoint-marker", "+"),
+        })
+          .setLngLat([waypointPoint.longitude, waypointPoint.latitude])
+          .setPopup(
+            new maplibregl.Popup().setDOMContent(
+              createPopupContent({
+                lines: [
+                  `${waypointCategory || "Spot"} waypoint`,
+                  waypointNote,
+                ],
+                title: waypointTitle || "Unsaved waypoint",
+              })
+            )
+          )
+      )
+    }
+  }, [
+    currentLocation,
+    deleteMapItem,
+    fieldNoteOpen,
+    fieldNotePoint,
+    fieldNoteText,
+    fieldNoteTitle,
+    mapItems,
+    mappedCatches,
+    waypointCategory,
+    waypointNote,
+    waypointOpen,
+    waypointPoint,
+    waypointTitle,
+  ])
+
+  useEffect(() => {
+    const map = mapRef.current
+
+    if (!map || hasSetInitialView.current || points.length === 0) {
+      return
+    }
+
+    const bounds = new maplibregl.LngLatBounds()
+    points.forEach(([latitude, longitude]) => bounds.extend([longitude, latitude]))
+    hasSetInitialView.current = true
+    map.fitBounds(bounds, { maxZoom: 13, padding: 44 })
+  }, [points])
+
+  useEffect(() => {
+    const map = mapRef.current
+
+    if (!map || !currentLocation || recenterRequest === 0) {
+      return
+    }
+
+    map.flyTo({
+      center: [currentLocation[1], currentLocation[0]],
+      essential: true,
+      pitch: is3d ? 64 : 0,
+      zoom: Math.max(map.getZoom(), 15),
+    })
+  }, [currentLocation, is3d, recenterRequest])
+
+  return <div ref={mapContainerRef} className="home-map" />
 }
 
 function Home({
@@ -476,7 +853,6 @@ function Home({
     catches.map((fish) => fish.species.trim()).filter(Boolean)
   ).size
 
-  const selectedTiles = mapTiles[mapStyle]
   const visibleWeather = mapWeatherOptions.filter(
     (condition) => mapWeatherConditions[condition.key] ?? true
   )
@@ -484,9 +860,7 @@ function Home({
     () =>
       measurePoints.slice(1).reduce((total, point, index) => {
         const previousPoint = measurePoints[index]
-        return total + L.latLng(previousPoint.latitude, previousPoint.longitude).distanceTo(
-          L.latLng(point.latitude, point.longitude)
-        )
+        return total + distanceBetween(previousPoint, point)
       }, 0),
     [measurePoints]
   )
@@ -834,132 +1208,34 @@ function Home({
 
   return (
     <main className={`phone-map-screen${is3d ? " home-map-3d" : ""}`}>
-      <MapContainer
-        center={[-37.25, 144.9]}
-        zoom={7}
-        className="home-map"
-        zoomControl={false}
-      >
-        <TileLayer
-          key={mapStyle}
-          attribution={selectedTiles.attribution}
-          url={selectedTiles.url}
-        />
-
-        <MapViewport
-          currentLocation={currentLocation}
-          points={points}
-          recenterRequest={recenterRequest}
-        />
-        <MapToolEvents
-          activeTool={activeTool}
-          fieldNoteOpen={fieldNoteOpen}
-          onCenterChange={setMapCenter}
-          onFieldNotePoint={setFieldNotePoint}
-          onMeasurePoint={(point) => setMeasurePoints((current) => [...current, point])}
-          onWaypointPoint={(point) => {
-            setWaypointPoint(point)
-            setWaypointOpen(true)
-          }}
-        />
-        {currentLocation && (
-          <Marker icon={currentLocationIcon} position={currentLocation}>
-            <Popup>You are here</Popup>
-          </Marker>
-        )}
-        {mappedCatches.map((fish) => (
-          <Marker
-            key={fish.id}
-            icon={markerIcon}
-            position={[fish.latitude!, fish.longitude!]}
-          >
-            <Popup>
-              <strong>{fish.species || "Unknown species"}</strong>
-              <br />
-              {fish.locationName || "Location saved"}
-            </Popup>
-          </Marker>
-        ))}
-        {mapItems.map((item) => (
-          <Marker
-            key={item.id}
-            icon={item.type === "waypoint" ? waypointIcon : fieldNoteIcon}
-            position={[item.latitude, item.longitude]}
-          >
-            <Popup>
-              <strong>{item.title}</strong>
-              <br />
-              {item.type === "waypoint" && item.category ? `${item.category} waypoint` : "Field note"}
-              {item.note && (
-                <>
-                  <br />
-                  {item.note}
-                </>
-              )}
-              {item.photoDataUrls?.[0] && (
-                <>
-                  <br />
-                  <img
-                    src={item.photoDataUrls[0]}
-                    alt={item.title}
-                    className="map-popup-photo"
-                  />
-                </>
-              )}
-              <br />
-              <button type="button" onClick={() => deleteMapItem(item.id)}>
-                Delete
-              </button>
-            </Popup>
-          </Marker>
-        ))}
-        {fieldNoteOpen && fieldNotePoint && (
-          <Marker
-            icon={pendingFieldNoteIcon}
-            position={[fieldNotePoint.latitude, fieldNotePoint.longitude]}
-          >
-            <Popup>
-              <strong>{fieldNoteTitle || "Unsaved field note"}</strong>
-              <br />
-              {fieldNoteText || "Tap Save Field Note to keep this note."}
-            </Popup>
-          </Marker>
-        )}
-        {waypointOpen && waypointPoint && (
-          <Marker
-            icon={pendingWaypointIcon}
-            position={[waypointPoint.latitude, waypointPoint.longitude]}
-          >
-            <Popup>
-              <strong>{waypointTitle || "Unsaved waypoint"}</strong>
-              <br />
-              {waypointCategory || "Spot"} waypoint
-              {waypointNote && (
-                <>
-                  <br />
-                  {waypointNote}
-                </>
-              )}
-            </Popup>
-          </Marker>
-        )}
-        {measurePoints.length > 0 && (
-          <>
-            <Polyline
-              positions={measurePoints.map((point) => [point.latitude, point.longitude])}
-              pathOptions={{ color: "#0797a6", weight: 4 }}
-            />
-            {measurePoints.map((point, index) => (
-              <CircleMarker
-                key={`${point.latitude}:${point.longitude}:${index}`}
-                center={[point.latitude, point.longitude]}
-                pathOptions={{ color: "#ffffff", fillColor: "#0797a6", fillOpacity: 1, weight: 2 }}
-                radius={5}
-              />
-            ))}
-          </>
-        )}
-      </MapContainer>
+      <HomeMap
+        activeTool={activeTool}
+        currentLocation={currentLocation}
+        deleteMapItem={deleteMapItem}
+        fieldNoteOpen={fieldNoteOpen}
+        fieldNotePoint={fieldNotePoint}
+        fieldNoteText={fieldNoteText}
+        fieldNoteTitle={fieldNoteTitle}
+        is3d={is3d}
+        mapItems={mapItems}
+        mappedCatches={mappedCatches}
+        mapStyle={mapStyle}
+        measurePoints={measurePoints}
+        onCenterChange={setMapCenter}
+        onFieldNotePoint={setFieldNotePoint}
+        onMeasurePoint={(point) => setMeasurePoints((current) => [...current, point])}
+        onWaypointPoint={(point) => {
+          setWaypointPoint(point)
+          setWaypointOpen(true)
+        }}
+        points={points}
+        recenterRequest={recenterRequest}
+        waypointCategory={waypointCategory}
+        waypointNote={waypointNote}
+        waypointOpen={waypointOpen}
+        waypointPoint={waypointPoint}
+        waypointTitle={waypointTitle}
+      />
 
       {summaryEnabled && (
         <section className="map-top-panel" aria-label="Current fishing summary">
