@@ -32,36 +32,36 @@ const markerIcon = L.icon({
 const currentLocationIcon = L.divIcon({
   className: "current-location-marker",
   html: "<span></span>",
-  iconSize: [28, 28],
-  iconAnchor: [14, 14],
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
 })
 
 const waypointIcon = L.divIcon({
   className: "map-tool-marker waypoint-marker",
-  html: "<span>W</span>",
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
+  html: "<span><b>W</b></span>",
+  iconSize: [34, 42],
+  iconAnchor: [17, 42],
 })
 
 const fieldNoteIcon = L.divIcon({
   className: "map-tool-marker field-note-marker",
-  html: "<span>N</span>",
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
+  html: "<span><b>N</b></span>",
+  iconSize: [34, 42],
+  iconAnchor: [17, 42],
 })
 
 const pendingWaypointIcon = L.divIcon({
   className: "map-tool-marker pending-waypoint-marker",
-  html: "<span>+</span>",
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
+  html: "<span><b>+</b></span>",
+  iconSize: [34, 42],
+  iconAnchor: [17, 42],
 })
 
 const pendingFieldNoteIcon = L.divIcon({
   className: "map-tool-marker pending-field-note-marker",
-  html: "<span>N</span>",
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
+  html: "<span><b>N</b></span>",
+  iconSize: [34, 42],
+  iconAnchor: [17, 42],
 })
 
 const mapTiles = {
@@ -159,6 +159,21 @@ function formatDistance(meters: number) {
   }
 
   return `${Math.round(meters)} m`
+}
+
+function isUnderCurrentLocation(
+  fish: { latitude: number | null; longitude: number | null },
+  currentLocation: [number, number] | null
+) {
+  if (!currentLocation || fish.latitude === null || fish.longitude === null) {
+    return false
+  }
+
+  return (
+    L.latLng(fish.latitude, fish.longitude).distanceTo(
+      L.latLng(currentLocation[0], currentLocation[1])
+    ) < 18
+  )
 }
 
 function parseFirstNumber(value: string | undefined) {
@@ -461,6 +476,9 @@ function Home({
 
   const mappedCatches = catches.filter(
     (fish) => fish.latitude !== null && fish.longitude !== null
+  )
+  const homeVisibleCatches = mappedCatches.filter(
+    (fish) => !isUnderCurrentLocation(fish, currentLocation)
   )
 
   const points = useMemo(
@@ -854,7 +872,7 @@ function Home({
             <Popup>You are here</Popup>
           </Marker>
         )}
-        {mappedCatches.map((fish) => (
+        {homeVisibleCatches.map((fish) => (
           <Marker
             key={fish.id}
             icon={markerIcon}

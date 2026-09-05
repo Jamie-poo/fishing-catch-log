@@ -511,14 +511,18 @@ h3 {
 }
 
 .current-location-marker {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
   background: transparent;
+  border: 0;
 }
 
 .current-location-marker span {
   display: block;
   width: 18px;
   height: 18px;
-  margin: 5px;
   border: 3px solid white;
   border-radius: 50%;
   background: #1a8cff;
@@ -1197,8 +1201,9 @@ h3 {
 
 .map-tool-marker {
   display: grid;
+  width: 34px;
+  height: 42px;
   place-items: center;
-  border-radius: 50%;
   background: transparent;
 }
 
@@ -1208,11 +1213,21 @@ h3 {
   height: 32px;
   place-items: center;
   border: 3px solid white;
-  border-radius: 50%;
+  border-radius: 50% 50% 50% 0;
   color: white;
+  transform: rotate(-45deg);
+  box-shadow: 0 8px 18px rgba(17, 24, 22, 0.28);
+}
+
+.map-tool-marker b {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
   font-size: 0.78rem;
   font-weight: 900;
-  box-shadow: 0 8px 18px rgba(17, 24, 22, 0.28);
+  line-height: 1;
+  transform: rotate(45deg);
 }
 
 .waypoint-marker span {
