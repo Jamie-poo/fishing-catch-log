@@ -159,7 +159,7 @@ function getMapItemIcon(item: SavedMapItem) {
     html: `<span><b>${label}</b></span>${
       title ? `<em>${escapeHtml(title)}</em>` : ""
     }`,
-    iconSize: title ? [156, 42] : [34, 42],
+    iconSize: title ? [156, 64] : [34, 42],
     iconAnchor: [17, 42],
   })
 }

@@ -1343,11 +1343,11 @@ h3 {
 }
 
 .labeled-map-tool-marker {
-  display: flex;
+  position: relative;
+  display: grid;
   width: 156px;
-  align-items: end;
-  gap: 7px;
-  place-items: unset;
+  height: 64px;
+  place-items: start;
 }
 
 .map-tool-marker span {
@@ -1374,10 +1374,16 @@ h3 {
 }
 
 .map-tool-marker em {
+  position: absolute;
+  top: 40px;
+  left: 17px;
+  display: inline-flex;
+  min-height: 22px;
   max-width: 110px;
-  margin-bottom: 6px;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
-  padding: 4px 8px;
+  padding: 3px 9px 4px;
   border: 1px solid rgba(148, 166, 151, 0.28);
   border-radius: 999px;
   background: rgba(9, 15, 13, 0.84);
@@ -1386,8 +1392,9 @@ h3 {
   font-size: 0.66rem;
   font-style: normal;
   font-weight: 850;
-  line-height: 1.1;
+  line-height: 1;
   text-overflow: ellipsis;
+  transform: translateX(-50%);
   white-space: nowrap;
 }
 
