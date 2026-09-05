@@ -1207,6 +1207,14 @@ h3 {
   background: transparent;
 }
 
+.labeled-map-tool-marker {
+  display: flex;
+  width: 156px;
+  align-items: end;
+  gap: 7px;
+  place-items: unset;
+}
+
 .map-tool-marker span {
   display: grid;
   width: 32px;
@@ -1230,13 +1238,37 @@ h3 {
   transform: rotate(45deg);
 }
 
+.map-tool-marker em {
+  max-width: 110px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  padding: 4px 8px;
+  border: 1px solid rgba(148, 166, 151, 0.28);
+  border-radius: 999px;
+  background: rgba(9, 15, 13, 0.84);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+  color: #f8fbf6;
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 850;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .waypoint-marker span {
   background: var(--primary);
 }
 
-.field-note-marker span {
+.field-note-marker span,
+.field-note-waypoint-marker span {
   background: var(--accent);
   color: #111816;
+}
+
+.map-popup-condition {
+  display: block;
+  margin-top: 4px;
 }
 
 .pending-waypoint-marker span {

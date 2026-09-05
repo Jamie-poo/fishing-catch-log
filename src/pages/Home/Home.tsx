@@ -36,20 +36,6 @@ const currentLocationIcon = L.divIcon({
   iconAnchor: [18, 18],
 })
 
-const waypointIcon = L.divIcon({
-  className: "map-tool-marker waypoint-marker",
-  html: "<span><b>W</b></span>",
-  iconSize: [34, 42],
-  iconAnchor: [17, 42],
-})
-
-const fieldNoteIcon = L.divIcon({
-  className: "map-tool-marker field-note-marker",
-  html: "<span><b>N</b></span>",
-  iconSize: [34, 42],
-  iconAnchor: [17, 42],
-})
-
 const pendingWaypointIcon = L.divIcon({
   className: "map-tool-marker pending-waypoint-marker",
   html: "<span><b>+</b></span>",
@@ -95,12 +81,13 @@ type LocationPoint = {
 
 type SavedMapItem = LocationPoint & {
   id: number
-  type: "waypoint" | "field-note"
+  type: "waypoint" | "field-note" | "field-note-waypoint"
   title: string
   note: string
   category?: string
   createdAt: string
   photoDataUrls?: string[]
+  conditions?: { label: string; value: string }[]
 }
 
 type MapStyle = keyof typeof mapTiles
@@ -132,6 +119,65 @@ function loadMapItems() {
   } catch {
     return []
   }
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+function getMapItemTypeLabel(item: SavedMapItem) {
+  if (item.type === "field-note-waypoint") return "Field note / waypoint"
+  if (item.type === "waypoint" && item.category) return `${item.category} waypoint`
+  if (item.type === "waypoint") return "Waypoint"
+
+  return "Field note"
+}
+
+function getMapItemIcon(item: SavedMapItem) {
+  const title = item.title.trim()
+  const isFieldNote =
+    item.type === "field-note" || item.type === "field-note-waypoint"
+  const markerClass = isFieldNote ? "field-note-marker" : "waypoint-marker"
+  const label = isFieldNote ? "N" : "W"
+
+  return L.divIcon({
+    className: [
+      "map-tool-marker",
+      markerClass,
+      item.type === "field-note-waypoint" ? "field-note-waypoint-marker" : "",
+      title ? "labeled-map-tool-marker" : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
+    html: `<span><b>${label}</b></span>${
+      title ? `<em>${escapeHtml(title)}</em>` : ""
+    }`,
+    iconSize: title ? [156, 42] : [34, 42],
+    iconAnchor: [17, 42],
+  })
+}
+
+function isLegacyWaypointForFieldNote(item: SavedMapItem, items: SavedMapItem[]) {
+  if (
+    item.type !== "waypoint" ||
+    item.category !== "Field note" ||
+    item.note !== "Created from field note"
+  ) {
+    return false
+  }
+
+  return items.some(
+    (other) =>
+      other.type === "field-note" &&
+      other.title === item.title &&
+      Math.abs(other.latitude - item.latitude) < 0.000001 &&
+      Math.abs(other.longitude - item.longitude) < 0.000001
+  )
 }
 
 function getCurrentPosition() {
@@ -533,9 +579,12 @@ function Home({
       value:
         weatherValues["moon.moonIllumination"] && weatherValues["moon.moonPhase"]
           ? `${weatherValues["moon.moonIllumination"]} ${weatherValues["moon.moonPhase"]}`
-          : "-",
+      : "-",
     },
   ]
+  const visibleMapItems = mapItems.filter(
+    (item) => !isLegacyWaypointForFieldNote(item, mapItems)
+  )
   const summaryEnabled = homeSummary.panel ?? true
   const summaryCopyEnabled =
     (homeSummary.location ?? true) || (homeSummary.gpsStatus ?? true)
@@ -777,28 +826,16 @@ function Home({
       ...current,
       {
         id: Date.now(),
-        type: "field-note",
+        type: dropWaypointWithNote ? "field-note-waypoint" : "field-note",
         title,
         note: fieldNoteText.trim(),
+        category: dropWaypointWithNote ? "Field note / waypoint" : undefined,
         latitude: point.latitude,
         longitude: point.longitude,
         createdAt,
         photoDataUrls: fieldNotePhotos.length > 0 ? fieldNotePhotos : undefined,
+        conditions: noteConditionChips,
       },
-      ...(dropWaypointWithNote
-        ? [
-            {
-              id: Date.now() + 1,
-              type: "waypoint" as const,
-              title,
-              note: "Created from field note",
-              category: "Field note",
-              latitude: point.latitude,
-              longitude: point.longitude,
-              createdAt,
-            },
-          ]
-        : []),
     ])
     closeFieldNote()
   }
@@ -885,22 +922,27 @@ function Home({
             </Popup>
           </Marker>
         ))}
-        {mapItems.map((item) => (
+        {visibleMapItems.map((item) => (
           <Marker
             key={item.id}
-            icon={item.type === "waypoint" ? waypointIcon : fieldNoteIcon}
+            icon={getMapItemIcon(item)}
             position={[item.latitude, item.longitude]}
           >
             <Popup>
               <strong>{item.title}</strong>
               <br />
-              {item.type === "waypoint" && item.category ? `${item.category} waypoint` : "Field note"}
+              {getMapItemTypeLabel(item)}
               {item.note && (
                 <>
                   <br />
                   {item.note}
                 </>
               )}
+              {item.conditions?.map((condition) => (
+                <span key={condition.label} className="map-popup-condition">
+                  <strong>{condition.label}</strong> {condition.value}
+                </span>
+              ))}
               {item.photoDataUrls?.[0] && (
                 <>
                   <br />
@@ -1202,7 +1244,7 @@ function Home({
             </div>
           </section>
           <label className="drop-waypoint-toggle">
-            <span>Drop waypoint at this location</span>
+            <span>Save as field note / waypoint</span>
             <input
               type="checkbox"
               checked={dropWaypointWithNote}
