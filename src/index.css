@@ -1271,11 +1271,6 @@ h3 {
   margin-top: 4px;
 }
 
-.pending-waypoint-marker span {
-  border-color: white;
-  background: #2fcb68;
-}
-
 .pending-field-note-marker span {
   border-color: white;
   background: #f0b429;

@@ -7,7 +7,6 @@ export const homeMapControlOptions: HomeMapControlOption[] = [
   { key: "weather", label: "Weather button" },
   { key: "intel", label: "Intel button" },
   { key: "fieldNote", label: "Field note button" },
-  { key: "waypoint", label: "Waypoint button" },
   { key: "recenter", label: "Recenter button" },
   { key: "measure", label: "Measure button" },
   { key: "layers", label: "Layers button" },

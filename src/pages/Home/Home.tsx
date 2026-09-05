@@ -36,13 +36,6 @@ const currentLocationIcon = L.divIcon({
   iconAnchor: [18, 18],
 })
 
-const pendingWaypointIcon = L.divIcon({
-  className: "map-tool-marker pending-waypoint-marker",
-  html: "<span><b>+</b></span>",
-  iconSize: [34, 42],
-  iconAnchor: [17, 42],
-})
-
 const pendingFieldNoteIcon = L.divIcon({
   className: "map-tool-marker pending-field-note-marker",
   html: "<span><b>N</b></span>",
@@ -92,7 +85,7 @@ type SavedMapItem = LocationPoint & {
 
 type MapStyle = keyof typeof mapTiles
 
-type MapTool = "browse" | "waypoint" | "measure"
+type MapTool = "browse" | "measure"
 
 type MapViewportProps = {
   currentLocation: [number, number] | null
@@ -106,7 +99,6 @@ type MapToolEventsProps = {
   onCenterChange: (point: LocationPoint) => void
   onFieldNotePoint: (point: LocationPoint) => void
   onMeasurePoint: (point: LocationPoint) => void
-  onWaypointPoint: (point: LocationPoint) => void
 }
 
 function loadMapItems() {
@@ -425,7 +417,6 @@ function MapToolEvents({
   onCenterChange,
   onFieldNotePoint,
   onMeasurePoint,
-  onWaypointPoint,
 }: MapToolEventsProps) {
   const map = useMapEvents({
     click(event) {
@@ -436,11 +427,6 @@ function MapToolEvents({
 
       if (activeTool === "measure") {
         onMeasurePoint(point)
-        return
-      }
-
-      if (activeTool === "waypoint") {
-        onWaypointPoint(point)
         return
       }
 
@@ -513,11 +499,6 @@ function Home({
   const [fieldNoteText, setFieldNoteText] = useState("")
   const [fieldNotePhotos, setFieldNotePhotos] = useState<string[]>([])
   const [dropWaypointWithNote, setDropWaypointWithNote] = useState(false)
-  const [waypointOpen, setWaypointOpen] = useState(false)
-  const [waypointPoint, setWaypointPoint] = useState<LocationPoint | null>(null)
-  const [waypointTitle, setWaypointTitle] = useState("Waypoint")
-  const [waypointCategory, setWaypointCategory] = useState("Spot")
-  const [waypointNote, setWaypointNote] = useState("")
   const [measurePoints, setMeasurePoints] = useState<LocationPoint[]>([])
 
   const mappedCatches = catches.filter(
@@ -684,7 +665,6 @@ function Home({
     setWeatherOpen(true)
     setIntelOpen(false)
     closeFieldNote()
-    closeWaypoint()
     setLayersOpen(false)
     await loadWeatherValues("Finding current weather...").catch(() => undefined)
   }
@@ -698,21 +678,10 @@ function Home({
     setIntelOpen(true)
     setWeatherOpen(false)
     closeFieldNote()
-    closeWaypoint()
     setLayersOpen(false)
 
     if (!weatherValues["weather.pressureTrend"]) {
       await loadWeatherValues("Building intel...").catch(() => undefined)
-    }
-  }
-
-  async function setWaypointFromGps() {
-    try {
-      const location = await getCurrentPosition()
-      setCurrentLocation([location.latitude, location.longitude])
-      setWaypointPoint(location)
-    } catch {
-      setWaypointPoint(mapCenter)
     }
   }
 
@@ -735,7 +704,6 @@ function Home({
     setFieldNotePoint(mapCenter)
     setIntelOpen(false)
     setWeatherOpen(false)
-    closeWaypoint()
     setLayersOpen(false)
 
     if (!weatherValues["weather.temperature"]) {
@@ -743,36 +711,11 @@ function Home({
     }
   }
 
-  function closeWaypoint() {
-    setWaypointOpen(false)
-    setWaypointPoint(null)
-    setWaypointTitle("Waypoint")
-    setWaypointCategory("Spot")
-    setWaypointNote("")
-    setActiveTool("browse")
-  }
-
-  function toggleWaypoint() {
-    if (waypointOpen || activeTool === "waypoint") {
-      closeWaypoint()
-      return
-    }
-
-    setActiveTool("waypoint")
-    setWaypointOpen(true)
-    setWaypointPoint(mapCenter)
-    setIntelOpen(false)
-    setWeatherOpen(false)
-    closeFieldNote()
-    setLayersOpen(false)
-  }
-
   function toggleLayers() {
     setLayersOpen((open) => !open)
     setIntelOpen(false)
     setWeatherOpen(false)
     closeFieldNote()
-    closeWaypoint()
   }
 
   function addFieldNotePhoto(photo: string) {
@@ -840,31 +783,6 @@ function Home({
     closeFieldNote()
   }
 
-  function saveWaypoint() {
-    const point = waypointPoint ?? mapCenter
-    const title = waypointTitle.trim() || "Waypoint"
-
-    setMapItems((current) => [
-      ...current,
-      {
-        id: Date.now(),
-        type: "waypoint",
-        title,
-        note: waypointNote.trim(),
-        category: waypointCategory.trim() || "Spot",
-        latitude: point.latitude,
-        longitude: point.longitude,
-        createdAt: new Date().toISOString(),
-      },
-    ])
-    setWaypointOpen(false)
-    setWaypointPoint(null)
-    setWaypointTitle("Waypoint")
-    setWaypointCategory("Spot")
-    setWaypointNote("")
-    setActiveTool("browse")
-  }
-
   function deleteMapItem(itemId: number) {
     setMapItems((current) => current.filter((item) => item.id !== itemId))
   }
@@ -899,10 +817,6 @@ function Home({
           onCenterChange={setMapCenter}
           onFieldNotePoint={setFieldNotePoint}
           onMeasurePoint={(point) => setMeasurePoints((current) => [...current, point])}
-          onWaypointPoint={(point) => {
-            setWaypointPoint(point)
-            setWaypointOpen(true)
-          }}
         />
         {currentLocation && (
           <Marker icon={currentLocationIcon} position={currentLocation}>
@@ -972,24 +886,6 @@ function Home({
             </Popup>
           </Marker>
         )}
-        {waypointOpen && waypointPoint && (
-          <Marker
-            icon={pendingWaypointIcon}
-            position={[waypointPoint.latitude, waypointPoint.longitude]}
-          >
-            <Popup>
-              <strong>{waypointTitle || "Unsaved waypoint"}</strong>
-              <br />
-              {waypointCategory || "Spot"} waypoint
-              {waypointNote && (
-                <>
-                  <br />
-                  {waypointNote}
-                </>
-              )}
-            </Popup>
-          </Marker>
-        )}
         {measurePoints.length > 0 && (
           <>
             <Polyline
@@ -1052,16 +948,6 @@ function Home({
             Field Note
           </button>
         )}
-        {(homeMapControls.waypoint ?? true) && (
-          <button
-            className={`home-tool-button${activeTool === "waypoint" ? " active" : ""}`}
-            type="button"
-            onClick={toggleWaypoint}
-          >
-            <span>+</span>
-            Waypoint
-          </button>
-        )}
         {(homeMapControls.recenter ?? true) && (
           <button
             type="button"
@@ -1109,7 +995,6 @@ function Home({
               setIntelOpen(false)
               setWeatherOpen(false)
               closeFieldNote()
-              closeWaypoint()
               setLayersOpen(false)
               setActiveTool("measure")
             }}
@@ -1254,46 +1139,6 @@ function Home({
           <button className="primary-button field-note-save" type="button" onClick={saveFieldNote}>
             Save Field Note
           </button>
-        </section>
-      )}
-
-      {waypointOpen && (homeMapControls.waypoint ?? true) && (
-        <section className="map-tool-card home-map-tool-card">
-          <header>
-            <h2>Waypoint</h2>
-            <button type="button" onClick={closeWaypoint}>Close</button>
-          </header>
-          <div className="split-input-row">
-            <label>
-              Name
-              <input
-                value={waypointTitle}
-                onChange={(event) => setWaypointTitle(event.target.value)}
-              />
-            </label>
-            <label>
-              Category
-              <input
-                value={waypointCategory}
-                onChange={(event) => setWaypointCategory(event.target.value)}
-              />
-            </label>
-          </div>
-          <label>
-            Notes
-            <textarea
-              value={waypointNote}
-              onChange={(event) => setWaypointNote(event.target.value)}
-            />
-          </label>
-          <div className="map-card-actions">
-            <button className="ghost-button" type="button" onClick={() => void setWaypointFromGps()}>
-              Use GPS
-            </button>
-            <button className="primary-button" type="button" onClick={saveWaypoint}>
-              Save Waypoint
-            </button>
-          </div>
         </section>
       )}
 
