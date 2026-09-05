@@ -213,21 +213,6 @@ function textMatchesSearch(value: string, query: string) {
   return value.toLowerCase().includes(query.toLowerCase())
 }
 
-function isUnderCurrentLocation(
-  fish: { latitude: number | null; longitude: number | null },
-  currentLocation: [number, number] | null
-) {
-  if (!currentLocation || fish.latitude === null || fish.longitude === null) {
-    return false
-  }
-
-  return (
-    L.latLng(fish.latitude, fish.longitude).distanceTo(
-      L.latLng(currentLocation[0], currentLocation[1])
-    ) < 18
-  )
-}
-
 function parseFirstNumber(value: string | undefined) {
   const match = value?.match(/-?\d+(?:\.\d+)?/)
   return match ? Number(match[0]) : null
@@ -539,9 +524,6 @@ function Home({
 
   const mappedCatches = catches.filter(
     (fish) => fish.latitude !== null && fish.longitude !== null
-  )
-  const homeVisibleCatches = mappedCatches.filter(
-    (fish) => !isUnderCurrentLocation(fish, currentLocation)
   )
 
   const points = useMemo(
@@ -1040,7 +1022,7 @@ function Home({
             <Popup>You are here</Popup>
           </Marker>
         )}
-        {homeVisibleCatches.map((fish) => (
+        {mappedCatches.map((fish) => (
           <Marker
             key={fish.id}
             icon={markerIcon}
