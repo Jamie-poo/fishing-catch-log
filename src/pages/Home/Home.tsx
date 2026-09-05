@@ -26,7 +26,7 @@ const mapTiles = {
 }
 
 const terrainTiles = {
-  url: "https://tiles.mapterhorn.com/tilejson.json",
+  url: "https://demotiles.maplibre.org/terrain-tiles/tiles.json",
 }
 
 type HomeProps = {
@@ -306,10 +306,12 @@ function buildMapStyle(style: MapStyle, is3d: boolean) {
         hillshadeSource: {
           type: "raster-dem",
           url: terrainTiles.url,
+          tileSize: 256,
         },
         terrainSource: {
           type: "raster-dem",
           url: terrainTiles.url,
+          tileSize: 256,
         },
       }
     : {}
@@ -346,7 +348,7 @@ function buildMapStyle(style: MapStyle, is3d: boolean) {
           ]
         : []),
     ],
-    terrain: is3d ? { source: "terrainSource", exaggeration: 1.35 } : undefined,
+    terrain: is3d ? { source: "terrainSource", exaggeration: 2.2 } : undefined,
     sky: is3d ? {} : undefined,
   } as maplibregl.StyleSpecification
 }
@@ -514,6 +516,7 @@ function HomeMap({
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markerRefs = useRef<maplibregl.Marker[]>([])
   const hasSetInitialView = useRef(false)
+  const handledRecenterRequest = useRef(0)
   const mapStateRef = useRef({
     activeTool,
     fieldNoteOpen,
@@ -622,6 +625,7 @@ function HomeMap({
       bearing: is3d ? -24 : 0,
       duration: 700,
       pitch: is3d ? 64 : 0,
+      zoom: is3d ? Math.max(map.getZoom(), 12.25) : map.getZoom(),
     })
   }, [is3d, mapStyle])
 
@@ -775,10 +779,16 @@ function HomeMap({
   useEffect(() => {
     const map = mapRef.current
 
-    if (!map || !currentLocation || recenterRequest === 0) {
+    if (
+      !map ||
+      !currentLocation ||
+      recenterRequest === 0 ||
+      handledRecenterRequest.current === recenterRequest
+    ) {
       return
     }
 
+    handledRecenterRequest.current = recenterRequest
     map.flyTo({
       center: [currentLocation[1], currentLocation[0]],
       essential: true,
