@@ -7,6 +7,7 @@ export const homeSummaryOptions: HomeSummaryOption[] = [
   { key: "panel", label: "Home summary card" },
   { key: "location", label: "Location name" },
   { key: "gpsStatus", label: "GPS status" },
+  { key: "search", label: "Map search" },
   { key: "time", label: "Current time" },
   { key: "logged", label: "Logged catches" },
   { key: "species", label: "Species count" },

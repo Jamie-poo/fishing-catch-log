@@ -480,6 +480,7 @@ function Home({
   const [locationStatus, setLocationStatus] = useState(
     canUseGeolocation ? "current location" : "GPS unavailable"
   )
+  const [mapSearchQuery, setMapSearchQuery] = useState("")
   const [recenterRequest, setRecenterRequest] = useState(0)
   const [mapCenter, setMapCenter] = useState<LocationPoint>({
     latitude: -37.25,
@@ -569,6 +570,7 @@ function Home({
   const summaryEnabled = homeSummary.panel ?? true
   const summaryCopyEnabled =
     (homeSummary.location ?? true) || (homeSummary.gpsStatus ?? true)
+  const searchEnabled = homeSummary.search ?? true
   const summaryMetrics = [
     {
       key: "time",
@@ -842,7 +844,7 @@ function Home({
             icon={getMapItemIcon(item)}
             position={[item.latitude, item.longitude]}
           >
-            <Popup>
+            <Popup className="map-item-popup" maxWidth={228}>
               <strong>{item.title}</strong>
               <br />
               {getMapItemTypeLabel(item)}
@@ -906,11 +908,26 @@ function Home({
 
       {summaryEnabled && (
         <section className="map-top-panel" aria-label="Current fishing summary">
-          {summaryCopyEnabled && (
-            <div className="map-top-copy">
-              {(homeSummary.location ?? true) && <h1>{locationTitle}</h1>}
-              {(homeSummary.gpsStatus ?? true) && (
-                <span className="gps-pill">{locationStatus}</span>
+          {(summaryCopyEnabled || searchEnabled) && (
+            <div className="map-top-main">
+              {summaryCopyEnabled && (
+                <div className="map-top-copy">
+                  {(homeSummary.location ?? true) && <h1>{locationTitle}</h1>}
+                  {(homeSummary.gpsStatus ?? true) && (
+                    <span className="gps-pill">{locationStatus}</span>
+                  )}
+                </div>
+              )}
+              {searchEnabled && (
+                <label className="map-search-field">
+                  <span>Search</span>
+                  <input
+                    aria-label="Search map"
+                    placeholder="Search map..."
+                    value={mapSearchQuery}
+                    onChange={(event) => setMapSearchQuery(event.target.value)}
+                  />
+                </label>
               )}
             </div>
           )}

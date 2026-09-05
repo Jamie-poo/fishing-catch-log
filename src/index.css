@@ -346,6 +346,13 @@ h3 {
   min-width: 0;
 }
 
+.map-top-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(128px, 0.82fr);
+  gap: 10px;
+  align-items: start;
+}
+
 .map-top-panel h1 {
   overflow: hidden;
   color: var(--text-on-dark);
@@ -373,6 +380,36 @@ h3 {
   border-radius: 50%;
   background: currentColor;
   content: "";
+}
+
+.map-search-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.map-search-field span {
+  color: rgba(248, 251, 246, 0.46);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.map-search-field input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  padding: 0 11px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #f8fbf6;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.map-search-field input::placeholder {
+  color: rgba(248, 251, 246, 0.48);
 }
 
 .map-metrics {
@@ -1136,11 +1173,46 @@ h3 {
   font-size: 1rem;
 }
 
+.map-item-popup .leaflet-popup-content-wrapper {
+  border-radius: 14px;
+}
+
+.map-item-popup .leaflet-popup-content {
+  width: 212px !important;
+  margin: 12px 14px 13px;
+  color: #2c302d;
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.map-item-popup .leaflet-popup-content > strong:first-child {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 0.92rem;
+  line-height: 1.1;
+}
+
+.map-item-popup .leaflet-popup-close-button {
+  top: 5px;
+  right: 6px;
+}
+
+.map-item-popup button {
+  margin-top: 7px;
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: #eef2ef;
+  color: #c83e3a;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .map-popup-photo {
-  width: 118px;
-  height: 82px;
+  width: 96px;
+  height: 64px;
   margin-top: 6px;
-  border-radius: 8px;
+  border-radius: 7px;
   object-fit: cover;
 }
 
