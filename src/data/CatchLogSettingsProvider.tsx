@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { catchFieldGroups, fieldId } from "./catchStructure"
 import { defaultHomeMapControls } from "./homeMapControls"
+import { defaultHomeMapDisplay } from "./homeMapDisplay"
+import { defaultHomeSearch } from "./homeSearch"
 import { defaultHomeSummary } from "./homeSummary"
 import { defaultMapFilters } from "./mapFilters"
 import { defaultMapWeatherConditions } from "./mapWeather"
@@ -24,6 +26,8 @@ function defaultSettings(): VisibilitySettings {
       )
     ),
     homeMapControls: defaultHomeMapControls(),
+    homeMapDisplay: defaultHomeMapDisplay(),
+    homeSearch: defaultHomeSearch(),
     homeSummary: defaultHomeSummary(),
     mapFilters: defaultMapFilters(),
     mapWeatherConditions: defaultMapWeatherConditions(),
@@ -53,6 +57,14 @@ function loadSettings(): VisibilitySettings {
       homeMapControls: {
         ...defaults.homeMapControls,
         ...parsed.homeMapControls,
+      },
+      homeMapDisplay: {
+        ...defaults.homeMapDisplay,
+        ...parsed.homeMapDisplay,
+      },
+      homeSearch: {
+        ...defaults.homeSearch,
+        ...parsed.homeSearch,
       },
       homeSummary: { ...defaults.homeSummary, ...parsed.homeSummary },
       mapFilters: { ...defaults.mapFilters, ...parsed.mapFilters },
@@ -90,6 +102,16 @@ export function CatchLogSettingsProvider({ children }: { children: ReactNode }) 
         setSettings((current) => ({
           ...current,
           homeMapControls: { ...current.homeMapControls, [key]: visible },
+        })),
+      setHomeMapDisplayVisible: (key: string, visible: boolean) =>
+        setSettings((current) => ({
+          ...current,
+          homeMapDisplay: { ...current.homeMapDisplay, [key]: visible },
+        })),
+      setHomeSearchVisible: (key: string, visible: boolean) =>
+        setSettings((current) => ({
+          ...current,
+          homeSearch: { ...current.homeSearch, [key]: visible },
         })),
       setHomeSummaryVisible: (key: string, visible: boolean) =>
         setSettings((current) => ({

@@ -145,8 +145,8 @@ function getMapItemTypeLabel(item: SavedMapItem) {
   return "Field note"
 }
 
-function getMapItemIcon(item: SavedMapItem) {
-  const title = item.title.trim()
+function getMapItemIcon(item: SavedMapItem, showNameLabel: boolean) {
+  const title = showNameLabel ? item.title.trim() : ""
   const isFieldNote =
     item.type === "field-note" || item.type === "field-note-waypoint"
   const markerClass = isFieldNote ? "field-note-marker" : "waypoint-marker"
@@ -483,6 +483,8 @@ function Home({
   const { catches } = useCatches()
   const {
     homeMapControls,
+    homeMapDisplay,
+    homeSearch,
     homeSummary,
     lengthUnit,
     mapWeatherConditions,
@@ -596,69 +598,81 @@ function Home({
       return []
     }
 
-    const catchResults = mappedCatches
-      .filter((fish) =>
-        textMatchesSearch(
-          [
-            fish.species,
-            fish.locationName,
-            fish.notes,
-            formatLength(fish.length, lengthUnit),
-            formatWeight(fish.weight, weightUnit),
-            new Date(fish.dateTime).toLocaleString(),
-          ]
-            .filter(Boolean)
-            .join(" "),
-          query
-        )
-      )
-      .slice(0, 4)
-      .map<MapSearchResult>((fish) => ({
-        id: `catch-${fish.id}`,
-        kind: "catch",
-        label: fish.species || "Saved catch",
-        detail: [
-          fish.locationName || "Catch location",
-          formatLength(fish.length, lengthUnit),
-          formatWeight(fish.weight, weightUnit),
-        ].join(" · "),
-        latitude: fish.latitude!,
-        longitude: fish.longitude!,
-      }))
+    const catchResults = (homeSearch.catches ?? true)
+        ? mappedCatches
+            .filter((fish) =>
+              textMatchesSearch(
+                [
+                  fish.species,
+                  fish.locationName,
+                  fish.notes,
+                  formatLength(fish.length, lengthUnit),
+                  formatWeight(fish.weight, weightUnit),
+                  new Date(fish.dateTime).toLocaleString(),
+                ]
+                  .filter(Boolean)
+                  .join(" "),
+                query
+              )
+            )
+            .slice(0, 4)
+            .map<MapSearchResult>((fish) => ({
+              id: `catch-${fish.id}`,
+              kind: "catch",
+              label: fish.species || "Saved catch",
+              detail: [
+                fish.locationName || "Catch location",
+                formatLength(fish.length, lengthUnit),
+                formatWeight(fish.weight, weightUnit),
+              ].join(" · "),
+              latitude: fish.latitude!,
+              longitude: fish.longitude!,
+            }))
+        : []
 
-    const noteResults = visibleMapItems
-      .filter((item) =>
-        textMatchesSearch(
-          [
-            item.title,
-            item.note,
-            item.category,
-            getMapItemTypeLabel(item),
-            ...(item.conditions?.flatMap((condition) => [
-              condition.label,
-              condition.value,
-            ]) ?? []),
-          ]
-            .filter(Boolean)
-            .join(" "),
-          query
-        )
-      )
-      .slice(0, 4)
-      .map<MapSearchResult>((item) => ({
-        id: `note-${item.id}`,
-        kind: "note",
-        label: item.title || getMapItemTypeLabel(item),
-        detail: item.note || getMapItemTypeLabel(item),
-        latitude: item.latitude,
-        longitude: item.longitude,
-      }))
+    const noteResults = (homeSearch.notes ?? true)
+        ? visibleMapItems
+            .filter((item) =>
+              textMatchesSearch(
+                [
+                  item.title,
+                  item.note,
+                  item.category,
+                  getMapItemTypeLabel(item),
+                  ...(item.conditions?.flatMap((condition) => [
+                    condition.label,
+                    condition.value,
+                  ]) ?? []),
+                ]
+                  .filter(Boolean)
+                  .join(" "),
+                query
+              )
+            )
+            .slice(0, 4)
+            .map<MapSearchResult>((item) => ({
+              id: `note-${item.id}`,
+              kind: "note",
+              label: item.title || getMapItemTypeLabel(item),
+              detail: item.note || getMapItemTypeLabel(item),
+              latitude: item.latitude,
+              longitude: item.longitude,
+            }))
+        : []
 
     return [...noteResults, ...catchResults].slice(0, 7)
-  }, [lengthUnit, mapSearchQuery, mappedCatches, visibleMapItems, weightUnit])
+  }, [
+    homeSearch.catches,
+    homeSearch.notes,
+    lengthUnit,
+    mapSearchQuery,
+    mappedCatches,
+    visibleMapItems,
+    weightUnit,
+  ])
   const visibleSearchResults = [
     ...localSearchResults,
-    ...(mapSearchQuery.trim().length >= 3
+    ...(mapSearchQuery.trim().length >= 3 && (homeSearch.places ?? true)
       ? placeSearchResults.filter(
           (place) => !localSearchResults.some((result) => result.id === place.id)
         )
@@ -742,7 +756,7 @@ function Home({
   useEffect(() => {
     const query = mapSearchQuery.trim()
 
-    if (query.length < 3) return
+    if (query.length < 3 || !(homeSearch.places ?? true)) return
 
     const controller = new AbortController()
     const timeout = window.setTimeout(() => {
@@ -824,7 +838,7 @@ function Home({
       window.clearTimeout(timeout)
       controller.abort()
     }
-  }, [currentLocation, mapSearchQuery])
+  }, [currentLocation, homeSearch.places, mapSearchQuery])
 
   async function loadWeatherValues(statusLabel: string) {
     setWeatherStatus(statusLabel)
@@ -1027,7 +1041,7 @@ function Home({
             <Popup>You are here</Popup>
           </Marker>
         )}
-        {mappedCatches.map((fish) => (
+        {(homeMapDisplay.catchPins ?? true) && mappedCatches.map((fish) => (
           <Marker
             key={fish.id}
             icon={fishMarkerIcon}
@@ -1043,7 +1057,7 @@ function Home({
         {visibleMapItems.map((item) => (
           <Marker
             key={item.id}
-            icon={getMapItemIcon(item)}
+            icon={getMapItemIcon(item, homeMapDisplay.markerNameLabels ?? true)}
             position={[item.latitude, item.longitude]}
           >
             <Popup className="map-item-popup" maxWidth={190}>
@@ -1090,7 +1104,7 @@ function Home({
             </Popup>
           </Marker>
         )}
-        {selectedSearchResult && (
+        {selectedSearchResult && (homeMapDisplay.searchSelectionMarker ?? true) && (
           <CircleMarker
             center={[
               selectedSearchResult.latitude,

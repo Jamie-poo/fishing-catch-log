@@ -2,6 +2,8 @@ import { useEffect, useState } from "react"
 import { catchFieldGroups, fieldId } from "../../data/catchStructure"
 import type { DepthUnit, LengthUnit, PressureTrendHours, WeightUnit } from "../../data/catchLogSettingsContext"
 import { homeMapControlOptions } from "../../data/homeMapControls"
+import { homeMapDisplayOptions } from "../../data/homeMapDisplay"
+import { homeSearchOptions } from "../../data/homeSearch"
 import { homeSummaryOptions } from "../../data/homeSummary"
 import { mapFilterOptions } from "../../data/mapFilters"
 import { mapWeatherOptions } from "../../data/mapWeather"
@@ -17,6 +19,8 @@ function Settings({ onBackHome }: SettingsProps) {
     fields,
     depthUnit,
     homeMapControls,
+    homeMapDisplay,
+    homeSearch,
     homeSummary,
     lengthUnit,
     mapFilters,
@@ -27,6 +31,8 @@ function Settings({ onBackHome }: SettingsProps) {
     setGroupVisible,
     setFieldVisible,
     setHomeMapControlVisible,
+    setHomeMapDisplayVisible,
+    setHomeSearchVisible,
     setHomeSummaryVisible,
     setLengthUnit,
     setMapFilterVisible,
@@ -157,6 +163,40 @@ function Settings({ onBackHome }: SettingsProps) {
                 checked={homeMapControls[option.key] ?? true}
                 onChange={(event) =>
                   setHomeMapControlVisible(option.key, event.target.checked)
+                }
+              /> {option.label}
+            </label>
+          ))}
+        </div>
+      </details>
+
+      <details className="catch-detail-section">
+        <summary><strong>Home Map Display</strong></summary>
+        <div className="settings-check-grid">
+          {homeMapDisplayOptions.map((option) => (
+            <label key={option.key}>
+              <input
+                type="checkbox"
+                checked={homeMapDisplay[option.key] ?? true}
+                onChange={(event) =>
+                  setHomeMapDisplayVisible(option.key, event.target.checked)
+                }
+              /> {option.label}
+            </label>
+          ))}
+        </div>
+      </details>
+
+      <details className="catch-detail-section">
+        <summary><strong>Home Search</strong></summary>
+        <div className="settings-check-grid">
+          {homeSearchOptions.map((option) => (
+            <label key={option.key}>
+              <input
+                type="checkbox"
+                checked={homeSearch[option.key] ?? true}
+                onChange={(event) =>
+                  setHomeSearchVisible(option.key, event.target.checked)
                 }
               /> {option.label}
             </label>
