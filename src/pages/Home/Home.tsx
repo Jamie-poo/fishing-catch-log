@@ -458,28 +458,13 @@ function syncMeasureLayer(map: maplibregl.Map, measurePoints: LocationPoint[]) {
     existingLine.setData(lineData)
   } else {
     map.addSource("measure-line", { type: "geojson", data: lineData })
-  }
-
-  if (!map.getLayer("measure-line-casing")) {
-    map.addLayer({
-      id: "measure-line-casing",
-      type: "line",
-      source: "measure-line",
-      paint: {
-        "line-color": "rgba(3, 9, 8, 0.72)",
-        "line-width": 9,
-      },
-    })
-  }
-
-  if (!map.getLayer("measure-line")) {
     map.addLayer({
       id: "measure-line",
       type: "line",
       source: "measure-line",
       paint: {
-        "line-color": "#32d6e6",
-        "line-width": 4.5,
+        "line-color": "#0797a6",
+        "line-width": 4,
       },
     })
   }
@@ -488,18 +473,15 @@ function syncMeasureLayer(map: maplibregl.Map, measurePoints: LocationPoint[]) {
     existingPoints.setData(pointData)
   } else {
     map.addSource("measure-points", { type: "geojson", data: pointData })
-  }
-
-  if (!map.getLayer("measure-points")) {
     map.addLayer({
       id: "measure-points",
       type: "circle",
       source: "measure-points",
       paint: {
-        "circle-color": "#16b8c8",
-        "circle-radius": 7,
+        "circle-color": "#0797a6",
+        "circle-radius": 5,
         "circle-stroke-color": "#ffffff",
-        "circle-stroke-width": 3,
+        "circle-stroke-width": 2,
       },
     })
   }
@@ -535,7 +517,6 @@ function HomeMap({
   const markerRefs = useRef<maplibregl.Marker[]>([])
   const hasSetInitialView = useRef(false)
   const handledRecenterRequest = useRef(0)
-  const measurePointsRef = useRef(measurePoints)
   const mapStateRef = useRef({
     activeTool,
     fieldNoteOpen,
@@ -544,10 +525,6 @@ function HomeMap({
     onMeasurePoint,
     onWaypointPoint,
   })
-
-  useEffect(() => {
-    measurePointsRef.current = measurePoints
-  }, [measurePoints])
 
   useEffect(() => {
     mapStateRef.current = {
@@ -591,9 +568,6 @@ function HomeMap({
     map.touchZoomRotate.enableRotation()
     mapRef.current = map
     window.requestAnimationFrame(() => map.resize())
-    map.on("style.load", () => {
-      syncMeasureLayer(map, measurePointsRef.current)
-    })
 
     map.on("click", (event: maplibregl.MapMouseEvent) => {
       const point = {
