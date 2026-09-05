@@ -18,13 +18,18 @@ import {
 import { useCatches } from "../../data/useCatches"
 import { useCatchLogSettings } from "../../data/useCatchLogSettings"
 
-const markerIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
+const fishMarkerIcon = L.divIcon({
+  className: "catch-fish-marker",
+  html: `
+    <span>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3.5 12c2.8-3 6-4.5 9.5-4.5 2.4 0 4.5 1.1 6 3.1l2.2-2.1v7l-2.2-2.1c-1.5 2-3.6 3.1-6 3.1-3.5 0-6.7-1.5-9.5-4.5Z" />
+        <circle cx="8" cy="11.2" r="0.9" />
+      </svg>
+    </span>
+  `,
+  iconSize: [34, 42],
+  iconAnchor: [17, 42],
 })
 
 type CatchMapProps = {
@@ -278,7 +283,7 @@ function CatchMap({ onBackHome }: CatchMapProps) {
           {mappedCatches.map((fish) => (
             <Marker
               key={fish.id}
-              icon={markerIcon}
+              icon={fishMarkerIcon}
               position={[fish.latitude!, fish.longitude!]}
             >
               <Popup>

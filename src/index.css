@@ -631,6 +631,37 @@ h3 {
     0 3px 12px rgba(17, 24, 22, 0.34);
 }
 
+.catch-fish-marker {
+  display: grid;
+  width: 34px;
+  height: 42px;
+  place-items: center;
+  background: transparent;
+}
+
+.catch-fish-marker span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 3px solid white;
+  border-radius: 50% 50% 50% 0;
+  background: #1a8cff;
+  box-shadow: 0 8px 18px rgba(17, 24, 22, 0.32);
+  transform: rotate(-45deg);
+}
+
+.catch-fish-marker svg {
+  width: 17px;
+  height: 17px;
+  fill: white;
+  transform: rotate(45deg);
+}
+
+.catch-fish-marker circle {
+  fill: #1a8cff;
+}
+
 .filter-panel,
 .catch-entry-card,
 .catch-detail-section,
