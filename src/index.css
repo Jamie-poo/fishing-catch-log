@@ -279,8 +279,11 @@ h3 {
 
 .phone-map-screen {
   position: relative;
+  height: 100svh;
   min-height: 100svh;
+  max-height: 100svh;
   overflow: hidden;
+  overscroll-behavior: none;
   background: #c9dcc5;
 }
 
@@ -298,6 +301,13 @@ h3 {
   position: absolute;
   inset: 0;
   z-index: 0;
+  height: 100%;
+  min-height: 100%;
+  touch-action: none;
+}
+
+.home-map .maplibregl-canvas {
+  touch-action: none;
 }
 
 .phone-map-screen .leaflet-container {
