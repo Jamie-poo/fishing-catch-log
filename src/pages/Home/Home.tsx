@@ -440,7 +440,6 @@ function Home({
   })
   const [mapStyle, setMapStyle] = useState<MapStyle>("satellite")
   const [layersOpen, setLayersOpen] = useState(false)
-  const [is3d, setIs3d] = useState(false)
   const [activeTool, setActiveTool] = useState<MapTool>("browse")
   const [weatherValues, setWeatherValues] = useState<Record<string, string>>({})
   const [weatherOpen, setWeatherOpen] = useState(false)
@@ -820,20 +819,8 @@ function Home({
     setLayersOpen(false)
   }
 
-  function toggle3dMode() {
-    setIs3d((enabled) => {
-      const nextEnabled = !enabled
-
-      if (nextEnabled) {
-        setLayersOpen(false)
-      }
-
-      return nextEnabled
-    })
-  }
-
   return (
-    <main className={`phone-map-screen${is3d ? " home-map-3d" : ""}`}>
+    <main className="phone-map-screen">
       <MapContainer
         center={[-37.25, 144.9]}
         zoom={7}
@@ -1047,16 +1034,6 @@ function Home({
           >
             <span>IN</span>
             Intel
-          </button>
-        )}
-        {(homeMapControls.threeD ?? true) && (
-          <button
-            className={`home-tool-button${is3d ? " active" : ""}`}
-            type="button"
-            onClick={toggle3dMode}
-          >
-            <span>3D</span>
-            3D
           </button>
         )}
         {(homeMapControls.measure ?? true) && (

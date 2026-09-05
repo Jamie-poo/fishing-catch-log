@@ -1195,68 +1195,6 @@ h3 {
   text-align: center;
 }
 
-.home-map-3d .leaflet-container {
-  overflow: hidden;
-  background: #101612;
-  perspective: 900px;
-}
-
-.home-map-3d .leaflet-tile-pane,
-.home-map-3d .leaflet-overlay-pane,
-.home-map-3d .leaflet-shadow-pane,
-.home-map-3d .leaflet-marker-pane {
-  transform: perspective(900px) rotateX(54deg) scale(1.46) translateY(-9%);
-  transform-origin: 50% 42%;
-  filter: contrast(1.14) saturate(1.2) brightness(0.92);
-}
-
-.home-map-3d .leaflet-tile-pane {
-  filter:
-    contrast(1.14)
-    saturate(1.2)
-    brightness(0.92)
-    drop-shadow(0 28px 24px rgba(0, 0, 0, 0.28));
-}
-
-.home-map-3d .leaflet-marker-pane {
-  z-index: 650;
-}
-
-.home-map-3d .leaflet-popup-pane,
-.home-map-3d .leaflet-tooltip-pane {
-  z-index: 760;
-}
-
-.home-map-3d .leaflet-tile {
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.16);
-}
-
-.home-map-3d .home-map::after {
-  position: absolute;
-  inset: 0;
-  z-index: 420;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 28%),
-    radial-gradient(circle at 50% 100%, transparent 42%, rgba(0, 0, 0, 0.24) 100%);
-  content: "";
-  pointer-events: none;
-}
-
-.home-map-3d::after {
-  position: absolute;
-  right: 14px;
-  bottom: calc(144px + env(safe-area-inset-bottom));
-  z-index: 520;
-  border-radius: 999px;
-  padding: 6px 10px;
-  background: rgba(17, 24, 22, 0.76);
-  color: white;
-  content: "3D";
-  font-size: 0.72rem;
-  font-weight: 800;
-  pointer-events: none;
-}
-
 .map-tool-marker {
   display: grid;
   place-items: center;
