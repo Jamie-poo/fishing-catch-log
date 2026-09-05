@@ -301,18 +301,6 @@ function getBrowserSpeechRecognition() {
 
 function buildMapStyle(style: MapStyle, is3d: boolean) {
   const selectedTiles = mapTiles[style]
-  const terrainSources = is3d
-    ? {
-        hillshadeSource: {
-          type: "raster-dem",
-          url: terrainTiles.url,
-        },
-        terrainSource: {
-          type: "raster-dem",
-          url: terrainTiles.url,
-        },
-      }
-    : {}
 
   return {
     version: 8,
@@ -323,7 +311,14 @@ function buildMapStyle(style: MapStyle, is3d: boolean) {
         tileSize: 256,
         attribution: selectedTiles.attribution,
       },
-      ...terrainSources,
+      terrainSource: {
+        type: "raster-dem",
+        url: terrainTiles.url,
+      },
+      hillshadeSource: {
+        type: "raster-dem",
+        url: terrainTiles.url,
+      },
     },
     layers: [
       {
@@ -564,7 +559,6 @@ function HomeMap({
     map.dragRotate.enable()
     map.touchZoomRotate.enableRotation()
     mapRef.current = map
-    window.requestAnimationFrame(() => map.resize())
 
     map.on("click", (event: maplibregl.MapMouseEvent) => {
       const point = {
