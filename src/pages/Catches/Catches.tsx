@@ -559,6 +559,7 @@ function Catches({ onBackHome, startInRecordMode = false }: CatchesProps) {
               type="button"
               onClick={() => {
                 setFormLocation(null)
+                setValue("header", "locationName", "")
                 setLocationStatus("Location cleared. Move the map to set a new spot.")
               }}
             >
@@ -571,8 +572,8 @@ function Catches({ onBackHome, startInRecordMode = false }: CatchesProps) {
             longitude={longitude}
             onLocationChange={(newLatitude, newLongitude) => {
               setFormLocation({ latitude: newLatitude, longitude: newLongitude })
-              setLocationStatus("Location set from the map.")
-              void fillLocationNameFromCoordinates(newLatitude, newLongitude, false)
+              setLocationStatus("Location set from the map. Updating location name...")
+              void fillLocationNameFromCoordinates(newLatitude, newLongitude, true)
               void fillEnvironmentFromCoordinates(newLatitude, newLongitude, false)
             }}
             height={260}

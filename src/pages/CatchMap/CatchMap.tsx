@@ -289,6 +289,8 @@ function CatchMap({ onBackHome }: CatchMapProps) {
               <Popup>
                 <strong>{fish.species || "Unknown species"}</strong>
                 <br />
+                {fish.locationName || "Location saved"}
+                <br />
                 Length: {formatLength(fish.length, lengthUnit)}
                 <br />
                 Weight: {formatWeight(fish.weight, weightUnit)}
