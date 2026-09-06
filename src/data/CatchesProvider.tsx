@@ -1,56 +1,66 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type SetStateAction,
+} from "react"
 import type { CatchRecord } from "./catchData"
 import { CatchesContext } from "./catchesContext"
-
-function toNumberOrNull(value: unknown) {
-  if (value === "" || value === null || value === undefined) {
-    return null
-  }
-
-  const numberValue = Number(value)
-  return Number.isFinite(numberValue) ? numberValue : null
-}
-
-function loadCatches(): CatchRecord[] {
-  const savedCatches = localStorage.getItem("catches")
-
-  if (!savedCatches) {
-    return []
-  }
-
-  try {
-    const parsedCatches: unknown = JSON.parse(savedCatches)
-
-    if (!Array.isArray(parsedCatches)) {
-      return []
-    }
-
-    return parsedCatches.map((fish) => {
-      const catchRecord = fish as CatchRecord
-
-      return {
-        ...catchRecord,
-        length: toNumberOrNull(catchRecord.length),
-        weight: toNumberOrNull(catchRecord.weight),
-      }
-    })
-  } catch {
-    return []
-  }
-}
+import { loadCatchRecords, loadLegacyCatchesSync, saveCatchRecords } from "./catchStorage"
 
 export function CatchesProvider({ children }: { children: ReactNode }) {
-  const [catches, setCatches] = useState<CatchRecord[]>(loadCatches)
+  const [catches, setStoredCatches] = useState<CatchRecord[]>(loadLegacyCatchesSync)
+  const [storageReady, setStorageReady] = useState(false)
+  const hasUserChanges = useRef(false)
+
+  const setCatches = useCallback((action: SetStateAction<CatchRecord[]>) => {
+    hasUserChanges.current = true
+    setStoredCatches(action)
+  }, [])
 
   useEffect(() => {
+    let isMounted = true
+
+    loadCatchRecords()
+      .then((savedCatches) => {
+        if (!isMounted) {
+          return
+        }
+
+        setStoredCatches((current) =>
+          hasUserChanges.current ? current : savedCatches
+        )
+        setStorageReady(true)
+      })
+      .catch((error) => {
+        console.warn("Catches could not be loaded from device storage.", error)
+
+        if (isMounted) {
+          setStorageReady(true)
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!storageReady) {
+      return
+    }
+
     try {
-      localStorage.setItem("catches", JSON.stringify(catches))
+      void saveCatchRecords(catches)
     } catch (error) {
       console.warn("Catches could not be saved locally.", error)
     }
-  }, [catches])
+  }, [catches, storageReady])
 
-  const value = useMemo(() => ({ catches, setCatches }), [catches])
+  const value = useMemo(() => ({ catches, setCatches }), [catches, setCatches])
 
   return (
     <CatchesContext.Provider value={value}>
