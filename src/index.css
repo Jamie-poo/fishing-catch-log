@@ -1569,6 +1569,11 @@ h3 {
   color: #07100d;
 }
 
+.weather-target-marker span {
+  background: #23a6d5;
+  color: white;
+}
+
 .catch-log-page {
   display: grid;
   align-content: start;

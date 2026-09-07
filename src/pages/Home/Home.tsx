@@ -65,6 +65,13 @@ const intelMarkerIcon = L.divIcon({
   iconAnchor: [17, 42],
 })
 
+const weatherMarkerIcon = L.divIcon({
+  className: "map-tool-marker weather-target-marker",
+  html: "<span><b>W</b></span>",
+  iconSize: [34, 42],
+  iconAnchor: [17, 42],
+})
+
 const mapTiles = {
   standard: {
     attribution: "&copy; OpenStreetMap contributors",
@@ -122,11 +129,13 @@ type MapToolEventsProps = {
   activeTool: MapTool
   fieldNoteOpen: boolean
   intelOpen: boolean
+  weatherOpen: boolean
   onCenterChange: (point: LocationPoint) => void
   onFieldNotePoint: (point: LocationPoint) => void
   onIntelPoint: (point: LocationPoint) => void
   onMapTap: () => void
   onMeasurePoint: (point: LocationPoint) => void
+  onWeatherPoint: (point: LocationPoint) => void
 }
 
 type MapSearchResult = LocationPoint & {
@@ -467,11 +476,13 @@ function MapToolEvents({
   activeTool,
   fieldNoteOpen,
   intelOpen,
+  weatherOpen,
   onCenterChange,
   onFieldNotePoint,
   onIntelPoint,
   onMapTap,
   onMeasurePoint,
+  onWeatherPoint,
 }: MapToolEventsProps) {
   const suppressTapUntil = useRef(0)
   const map = useMapEvents({
@@ -507,15 +518,22 @@ function MapToolEvents({
     contextmenu(event) {
       event.originalEvent.preventDefault()
 
-      if (!intelOpen) {
+      if (!intelOpen && !weatherOpen) {
         return
       }
 
       suppressTapUntil.current = Date.now() + 850
-      onIntelPoint({
+      const point = {
         latitude: event.latlng.lat,
         longitude: event.latlng.lng,
-      })
+      }
+
+      if (intelOpen) {
+        onIntelPoint(point)
+        return
+      }
+
+      onWeatherPoint(point)
     },
   })
 
@@ -577,6 +595,8 @@ function Home({
   const [activeTool, setActiveTool] = useState<MapTool>("browse")
   const [weatherValues, setWeatherValues] = useState<Record<string, string>>({})
   const [weatherOpen, setWeatherOpen] = useState(false)
+  const [weatherPoint, setWeatherPoint] = useState<LocationPoint | null>(null)
+  const [weatherLocationName, setWeatherLocationName] = useState("")
   const [weatherStatus, setWeatherStatus] = useState("")
   const [intelOpen, setIntelOpen] = useState(false)
   const [intelPoint, setIntelPoint] = useState<LocationPoint | null>(null)
@@ -982,7 +1002,8 @@ function Home({
   async function loadWeatherValues(
     statusLabel: string,
     targetLocation?: LocationPoint,
-    successLabel = "Current weather"
+    successLabel = "Current weather",
+    targetKind: "weather" | "intel" = "weather"
   ) {
     setWeatherStatus(statusLabel)
 
@@ -1007,16 +1028,26 @@ function Home({
             location.longitude
           )
 
-          setIntelLocationName(locationName)
-          nextStatus = `Intel for ${locationName}`
+          if (targetKind === "intel") {
+            setIntelLocationName(locationName)
+            nextStatus = `Intel for ${locationName}`
+          } else {
+            setWeatherLocationName(locationName)
+            nextStatus = `Weather for ${locationName}`
+          }
         } catch {
           const fallbackName = formatCoordinateLocation(
             location.latitude,
             location.longitude
           )
 
-          setIntelLocationName(fallbackName)
-          nextStatus = "Intel for pinned spot"
+          if (targetKind === "intel") {
+            setIntelLocationName(fallbackName)
+            nextStatus = "Intel for pinned spot"
+          } else {
+            setWeatherLocationName(fallbackName)
+            nextStatus = "Weather for pinned spot"
+          }
         }
       }
 
@@ -1031,13 +1062,12 @@ function Home({
 
   async function openWeatherPanel() {
     if (weatherOpen) {
-      setWeatherOpen(false)
+      closeWeatherPanel()
       return
     }
 
     setWeatherOpen(true)
     closeIntelPanel()
-    setIntelLocationName("")
     closeFieldNote()
     setLayersOpen(false)
     await loadWeatherValues("Finding current weather...").catch(() => undefined)
@@ -1050,7 +1080,7 @@ function Home({
     }
 
     setIntelOpen(true)
-    setWeatherOpen(false)
+    closeWeatherPanel()
     closeFieldNote()
     setLayersOpen(false)
     setActiveTool("browse")
@@ -1070,10 +1100,16 @@ function Home({
     setIntelLocationName("")
   }
 
+  function closeWeatherPanel() {
+    setWeatherOpen(false)
+    setWeatherPoint(null)
+    setWeatherLocationName("")
+  }
+
   async function dropIntelPoint(point: LocationPoint) {
     setIntelPoint(point)
     setIntelOpen(true)
-    setWeatherOpen(false)
+    closeWeatherPanel()
     closeFieldNote()
     setLayersOpen(false)
     setActiveTool("browse")
@@ -1082,7 +1118,25 @@ function Home({
     await loadWeatherValues(
       "Building intel for pin...",
       point,
-      "Intel for pinned spot"
+      "Intel for pinned spot",
+      "intel"
+    ).catch(() => undefined)
+  }
+
+  async function dropWeatherPoint(point: LocationPoint) {
+    setWeatherPoint(point)
+    setWeatherOpen(true)
+    closeIntelPanel()
+    closeFieldNote()
+    setLayersOpen(false)
+    setActiveTool("browse")
+    setWeatherLocationName("Pinned spot")
+
+    await loadWeatherValues(
+      "Loading weather for pin...",
+      point,
+      "Weather for pinned spot",
+      "weather"
     ).catch(() => undefined)
   }
 
@@ -1104,7 +1158,7 @@ function Home({
     setFieldNoteOpen(true)
     setFieldNotePoint(mapCenter)
     closeIntelPanel()
-    setWeatherOpen(false)
+    closeWeatherPanel()
     setLayersOpen(false)
 
     if (!weatherValues["weather.temperature"]) {
@@ -1115,7 +1169,7 @@ function Home({
   function toggleLayers() {
     setLayersOpen((open) => !open)
     closeIntelPanel()
-    setWeatherOpen(false)
+    closeWeatherPanel()
     closeFieldNote()
   }
 
@@ -1198,7 +1252,7 @@ function Home({
     setMapSearchQuery(result.label)
     setSearchFocused(false)
     setSearchRequest((current) => current + 1)
-    setWeatherOpen(false)
+    closeWeatherPanel()
     closeIntelPanel()
     setLayersOpen(false)
     closeFieldNote()
@@ -1213,7 +1267,7 @@ function Home({
   }
 
   function closeMapOverlays() {
-    setWeatherOpen(false)
+    closeWeatherPanel()
     closeIntelPanel()
     setLayersOpen(false)
     setSearchFocused(false)
@@ -1225,7 +1279,7 @@ function Home({
 
     if (lastTap?.id === catchId && now - lastTap.time < 420) {
       lastCatchPopupTap.current = null
-      onOpenCatchDetail(catchId)
+      window.setTimeout(() => onOpenCatchDetail(catchId), 120)
       return
     }
 
@@ -1257,15 +1311,17 @@ function Home({
           activeTool={activeTool}
           fieldNoteOpen={fieldNoteOpen}
           intelOpen={intelOpen}
+          weatherOpen={weatherOpen}
           onCenterChange={setMapCenter}
           onFieldNotePoint={setFieldNotePoint}
           onIntelPoint={(point) => void dropIntelPoint(point)}
           onMapTap={closeMapOverlays}
           onMeasurePoint={(point) => setMeasurePoints((current) => [...current, point])}
+          onWeatherPoint={(point) => void dropWeatherPoint(point)}
         />
         {currentLocation && (
           <Marker icon={currentLocationIcon} position={currentLocation}>
-            <Popup closeOnClick>You are here</Popup>
+            <Popup autoPan={false} closeOnClick>You are here</Popup>
           </Marker>
         )}
         {(homeMapDisplay.catchPins ?? true) && mappedCatches.map((fish) => {
@@ -1278,16 +1334,24 @@ function Home({
               position={[fish.latitude!, fish.longitude!]}
             >
               <Popup
-                autoPanPaddingBottomRight={[18, 132]}
-                autoPanPaddingTopLeft={[18, 230]}
+                autoPan={false}
                 className="map-catch-popup"
                 closeOnClick
                 maxWidth={220}
               >
                 <button
                   className="map-catch-popup-card"
-                  onDoubleClick={() => onOpenCatchDetail(fish.id)}
-                  onTouchEnd={() => handleCatchPopupTap(fish.id)}
+                  onClick={(event) => event.stopPropagation()}
+                  onDoubleClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    window.setTimeout(() => onOpenCatchDetail(fish.id), 120)
+                  }}
+                  onTouchEnd={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    handleCatchPopupTap(fish.id)
+                  }}
                   type="button"
                 >
                   {mainPhoto ? (
@@ -1313,7 +1377,7 @@ function Home({
             icon={getMapItemIcon(item, homeMapDisplay.markerNameLabels ?? true)}
             position={[item.latitude, item.longitude]}
           >
-            <Popup closeOnClick className="map-item-popup" maxWidth={190}>
+            <Popup autoPan={false} closeOnClick className="map-item-popup" maxWidth={190}>
               <strong>{item.title}</strong>
               <br />
               {getMapItemTypeLabel(item)}
@@ -1350,7 +1414,7 @@ function Home({
             icon={pendingFieldNoteIcon}
             position={[fieldNotePoint.latitude, fieldNotePoint.longitude]}
           >
-            <Popup closeOnClick>
+            <Popup autoPan={false} closeOnClick>
               <strong>{fieldNoteTitle || "Unsaved field note"}</strong>
               <br />
               {fieldNoteText || "Tap Save Field Note to keep this note."}
@@ -1362,10 +1426,22 @@ function Home({
             icon={intelMarkerIcon}
             position={[intelPoint.latitude, intelPoint.longitude]}
           >
-            <Popup closeOnClick>
+            <Popup autoPan={false} closeOnClick>
               <strong>Intel target</strong>
               <br />
               {intelLocationName || "Pinned spot"}
+            </Popup>
+          </Marker>
+        )}
+        {weatherOpen && weatherPoint && (
+          <Marker
+            icon={weatherMarkerIcon}
+            position={[weatherPoint.latitude, weatherPoint.longitude]}
+          >
+            <Popup autoPan={false} closeOnClick>
+              <strong>Weather target</strong>
+              <br />
+              {weatherLocationName || "Pinned spot"}
             </Popup>
           </Marker>
         )}
@@ -1377,7 +1453,7 @@ function Home({
               selectedSearchResult.longitude,
             ]}
           >
-            <Popup closeOnClick className="map-item-popup" maxWidth={210}>
+            <Popup autoPan={false} closeOnClick className="map-item-popup" maxWidth={210}>
               <strong>{selectedSearchResult.label}</strong>
               <br />
               {selectedSearchResult.detail}
@@ -1544,7 +1620,7 @@ function Home({
               }
 
               closeIntelPanel()
-              setWeatherOpen(false)
+              closeWeatherPanel()
               closeFieldNote()
               setLayersOpen(false)
               setActiveTool("measure")
@@ -1589,8 +1665,11 @@ function Home({
         <section className="map-tool-card home-map-tool-card map-weather-card">
           <header>
             <h2>{weatherStatus || "Weather"}</h2>
-            <button type="button" onClick={() => setWeatherOpen(false)}>Close</button>
+            <button type="button" onClick={closeWeatherPanel}>Close</button>
           </header>
+          <p className="page-note">
+            Hold the map to check weather at a pinned spot.
+          </p>
           <div className="map-weather-grid">
             {visibleWeather.map((condition) => (
               <p key={condition.key}>
