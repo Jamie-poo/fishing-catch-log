@@ -16,7 +16,7 @@
   --sans: system-ui, "Segoe UI", Roboto, Arial, sans-serif;
 
   color: var(--text);
-  background: #dfe6dc;
+  background: #111816;
   font: 16px/1.45 var(--sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -52,6 +52,10 @@
 
 body {
   margin: 0;
+  background: #111816;
+}
+
+html {
   background: #111816;
 }
 

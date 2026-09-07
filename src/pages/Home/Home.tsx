@@ -482,6 +482,9 @@ function MapToolEvents({
         longitude: center.lng,
       })
     },
+    dragstart() {
+      map.closePopup()
+    },
   })
 
   useEffect(() => {
@@ -1172,7 +1175,13 @@ function Home({
               icon={fishMarkerIcon}
               position={[fish.latitude!, fish.longitude!]}
             >
-              <Popup className="map-catch-popup" maxWidth={220}>
+              <Popup
+                autoPanPaddingBottomRight={[18, 132]}
+                autoPanPaddingTopLeft={[18, 230]}
+                className="map-catch-popup"
+                keepInView
+                maxWidth={220}
+              >
                 <button
                   className="map-catch-popup-card"
                   onDoubleClick={() => onOpenCatchDetail(fish.id)}
