@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import L from "leaflet"
 import {
   CircleMarker,
@@ -45,6 +45,13 @@ const currentLocationIcon = L.divIcon({
 const pendingFieldNoteIcon = L.divIcon({
   className: "map-tool-marker pending-field-note-marker",
   html: "<span><b>N</b></span>",
+  iconSize: [34, 42],
+  iconAnchor: [17, 42],
+})
+
+const searchMarkerIcon = L.divIcon({
+  className: "map-tool-marker search-result-marker",
+  html: "<span><b>S</b></span>",
   iconSize: [34, 42],
   iconAnchor: [17, 42],
 })
@@ -116,6 +123,12 @@ type MapSearchResult = LocationPoint & {
   kind: "catch" | "note" | "place"
 }
 
+type CatchLocationPoint = {
+  latitude: number | null
+  longitude: number | null
+  locationName?: string
+}
+
 function loadMapItems() {
   const saved = localStorage.getItem("catch-map-items")
   if (!saved) return []
@@ -185,6 +198,14 @@ function isLegacyWaypointForFieldNote(item: SavedMapItem, items: SavedMapItem[])
       Math.abs(other.latitude - item.latitude) < 0.000001 &&
       Math.abs(other.longitude - item.longitude) < 0.000001
   )
+}
+
+function getCatchLocationKey(fish: CatchLocationPoint) {
+  if (fish.latitude === null || fish.longitude === null) {
+    return null
+  }
+
+  return `${fish.latitude.toFixed(5)},${fish.longitude.toFixed(5)}`
 }
 
 function getCurrentPosition() {
@@ -528,6 +549,7 @@ function Home({
   const [fieldNotePhotos, setFieldNotePhotos] = useState<string[]>([])
   const [dropWaypointWithNote, setDropWaypointWithNote] = useState(false)
   const [measurePoints, setMeasurePoints] = useState<LocationPoint[]>([])
+  const [catchLocationNames, setCatchLocationNames] = useState<Record<string, string>>({})
 
   const mappedCatches = catches.filter(
     (fish) => fish.latitude !== null && fish.longitude !== null
@@ -591,6 +613,17 @@ function Home({
   const visibleMapItems = mapItems.filter(
     (item) => !isLegacyWaypointForFieldNote(item, mapItems)
   )
+
+  const getCatchDisplayLocation = useCallback((fish: CatchLocationPoint) => {
+    const locationKey = getCatchLocationKey(fish)
+
+    if (!locationKey) {
+      return fish.locationName || "Location saved"
+    }
+
+    return catchLocationNames[locationKey] || "Location saved"
+  }, [catchLocationNames])
+
   const localSearchResults = useMemo(() => {
     const query = mapSearchQuery.trim()
 
@@ -604,7 +637,7 @@ function Home({
               textMatchesSearch(
                 [
                   fish.species,
-                  fish.locationName,
+                  getCatchDisplayLocation(fish),
                   fish.notes,
                   formatLength(fish.length, lengthUnit),
                   formatWeight(fish.weight, weightUnit),
@@ -621,7 +654,7 @@ function Home({
               kind: "catch",
               label: fish.species || "Saved catch",
               detail: [
-                fish.locationName || "Catch location",
+                getCatchDisplayLocation(fish),
                 formatLength(fish.length, lengthUnit),
                 formatWeight(fish.weight, weightUnit),
               ].join(" · "),
@@ -669,6 +702,7 @@ function Home({
     mappedCatches,
     visibleMapItems,
     weightUnit,
+    getCatchDisplayLocation,
   ])
   const visibleSearchResults = [
     ...localSearchResults,
@@ -733,6 +767,70 @@ function Home({
 
     return () => navigator.geolocation.clearWatch(watchId)
   }, [canUseGeolocation])
+
+  useEffect(() => {
+    const lookups = mappedCatches.reduce<
+      { key: string; latitude: number; longitude: number }[]
+    >((current, fish) => {
+      const key = getCatchLocationKey(fish)
+
+      if (
+        !key ||
+        catchLocationNames[key] ||
+        fish.latitude === null ||
+        fish.longitude === null
+      ) {
+        return current
+      }
+
+      current.push({
+        key,
+        latitude: fish.latitude,
+        longitude: fish.longitude,
+      })
+      return current
+    }, [])
+
+    if (lookups.length === 0) {
+      return
+    }
+
+    const controller = new AbortController()
+
+    Promise.all(
+      lookups.map(async (lookup) => {
+        const name = await getLocationNameFromCoordinates(
+          lookup.latitude,
+          lookup.longitude,
+          controller.signal
+        )
+
+        return [lookup.key, name] as const
+      })
+    )
+      .then((names) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setCatchLocationNames((current) => {
+          const next = { ...current }
+          let changed = false
+
+          names.forEach(([key, name]) => {
+            if (!next[key]) {
+              next[key] = name
+              changed = true
+            }
+          })
+
+          return changed ? next : current
+        })
+      })
+      .catch(() => undefined)
+
+    return () => controller.abort()
+  }, [catchLocationNames, mappedCatches])
 
   useEffect(() => {
     if (!currentLocation) {
@@ -1008,6 +1106,13 @@ function Home({
     setActiveTool("browse")
   }
 
+  function clearSearch() {
+    setMapSearchQuery("")
+    setPlaceSearchResults([])
+    setSelectedSearchResult(null)
+    setSearchFocused(false)
+  }
+
   return (
     <main className="phone-map-screen">
       <MapContainer
@@ -1050,7 +1155,7 @@ function Home({
             <Popup>
               <strong>{fish.species || "Unknown species"}</strong>
               <br />
-              {fish.locationName || "Location saved"}
+              {getCatchDisplayLocation(fish)}
             </Popup>
           </Marker>
         ))}
@@ -1105,26 +1210,19 @@ function Home({
           </Marker>
         )}
         {selectedSearchResult && (homeMapDisplay.searchSelectionMarker ?? true) && (
-          <CircleMarker
-            center={[
+          <Marker
+            icon={searchMarkerIcon}
+            position={[
               selectedSearchResult.latitude,
               selectedSearchResult.longitude,
             ]}
-            pathOptions={{
-              color: "#f8fbf6",
-              fillColor:
-                selectedSearchResult.kind === "place" ? "#0797a6" : "#40b360",
-              fillOpacity: 0.9,
-              weight: 3,
-            }}
-            radius={11}
           >
             <Popup className="map-item-popup" maxWidth={210}>
               <strong>{selectedSearchResult.label}</strong>
               <br />
               {selectedSearchResult.detail}
             </Popup>
-          </CircleMarker>
+          </Marker>
         )}
         {measurePoints.length > 0 && (
           <>
@@ -1159,22 +1257,35 @@ function Home({
               {searchEnabled && (
                 <div className="map-search-field">
                   <span>Search</span>
-                  <input
-                    aria-label="Search map"
-                    placeholder="Search map..."
-                    value={mapSearchQuery}
-                    onBlur={() => window.setTimeout(() => setSearchFocused(false), 140)}
-                    onChange={(event) => {
-                      setMapSearchQuery(event.target.value)
-                      setSelectedSearchResult(null)
-                    }}
-                    onFocus={() => setSearchFocused(true)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && visibleSearchResults[0]) {
-                        selectSearchResult(visibleSearchResults[0])
-                      }
-                    }}
-                  />
+                  <div className="map-search-input-wrap">
+                    <input
+                      aria-label="Search map"
+                      placeholder="Search map..."
+                      value={mapSearchQuery}
+                      onBlur={() => window.setTimeout(() => setSearchFocused(false), 140)}
+                      onChange={(event) => {
+                        setMapSearchQuery(event.target.value)
+                        setSelectedSearchResult(null)
+                      }}
+                      onFocus={() => setSearchFocused(true)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && visibleSearchResults[0]) {
+                          selectSearchResult(visibleSearchResults[0])
+                        }
+                      }}
+                    />
+                    {mapSearchQuery !== "" && (
+                      <button
+                        aria-label="Clear map search"
+                        className="map-search-clear"
+                        onClick={clearSearch}
+                        onMouseDown={(event) => event.preventDefault()}
+                        type="button"
+                      >
+                        x
+                      </button>
+                    )}
+                  </div>
                   {showSearchResults && (
                     <div className="map-search-results">
                       {visibleSearchResults.map((result) => (

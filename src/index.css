@@ -409,6 +409,41 @@ h3 {
   font-weight: 750;
 }
 
+.map-search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.map-search-input-wrap input {
+  margin-top: 0;
+  padding-right: 38px;
+}
+
+.map-search-clear {
+  position: absolute;
+  right: 6px;
+  display: grid;
+  width: 26px;
+  min-height: 26px;
+  height: 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: rgba(248, 251, 246, 0.12);
+  color: rgba(248, 251, 246, 0.72);
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.map-search-clear:active,
+.map-search-clear:hover {
+  background: rgba(248, 251, 246, 0.2);
+  color: #f8fbf6;
+}
+
 .map-search-field input::placeholder {
   color: rgba(248, 251, 246, 0.48);
 }
@@ -1457,6 +1492,11 @@ h3 {
   border-color: white;
   background: #f0b429;
   color: #111816;
+}
+
+.search-result-marker span {
+  background: #e34234;
+  color: white;
 }
 
 .catch-log-page {

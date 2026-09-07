@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   LayersControl,
   MapContainer,
@@ -15,6 +15,7 @@ import {
   inchesToCentimeters,
   poundsOuncesToKilograms,
 } from "../../data/measurements"
+import { getLocationNameFromCoordinates } from "../../data/location"
 import { useCatches } from "../../data/useCatches"
 import { useCatchLogSettings } from "../../data/useCatchLogSettings"
 
@@ -46,6 +47,12 @@ type AutocompleteFilterProps = {
   placeholder: string
   value: string
   onChange: (value: string) => void
+}
+
+type CatchLocationPoint = {
+  latitude: number | null
+  longitude: number | null
+  locationName?: string
 }
 
 function MapViewport({ points }: MapViewportProps) {
@@ -112,6 +119,14 @@ function textMatchesFilter(value: string | undefined, filter: string) {
   return value?.toLowerCase().includes(filter.toLowerCase()) ?? false
 }
 
+function getCatchLocationKey(fish: CatchLocationPoint) {
+  if (fish.latitude === null || fish.longitude === null) {
+    return null
+  }
+
+  return `${fish.latitude.toFixed(5)},${fish.longitude.toFixed(5)}`
+}
+
 function CatchMap({ onBackHome }: CatchMapProps) {
   const { catches } = useCatches()
   const { lengthUnit, mapFilters, weightUnit } = useCatchLogSettings()
@@ -119,6 +134,7 @@ function CatchMap({ onBackHome }: CatchMapProps) {
   const [locationFilter, setLocationFilter] = useState("")
   const [minLength, setMinLength] = useState("")
   const [minWeight, setMinWeight] = useState("")
+  const [catchLocationNames, setCatchLocationNames] = useState<Record<string, string>>({})
 
   const species = useMemo(
     () =>
@@ -178,6 +194,80 @@ function CatchMap({ onBackHome }: CatchMapProps) {
   const points = mappedCatches.map(
     (fish) => [fish.latitude!, fish.longitude!] as [number, number]
   )
+
+  const getCatchDisplayLocation = useCallback((fish: CatchLocationPoint) => {
+    const locationKey = getCatchLocationKey(fish)
+
+    if (!locationKey) {
+      return fish.locationName || "Location saved"
+    }
+
+    return catchLocationNames[locationKey] || "Location saved"
+  }, [catchLocationNames])
+
+  useEffect(() => {
+    const lookups = mappedCatches.reduce<
+      { key: string; latitude: number; longitude: number }[]
+    >((current, fish) => {
+      const key = getCatchLocationKey(fish)
+
+      if (
+        !key ||
+        catchLocationNames[key] ||
+        fish.latitude === null ||
+        fish.longitude === null
+      ) {
+        return current
+      }
+
+      current.push({
+        key,
+        latitude: fish.latitude,
+        longitude: fish.longitude,
+      })
+      return current
+    }, [])
+
+    if (lookups.length === 0) {
+      return
+    }
+
+    const controller = new AbortController()
+
+    Promise.all(
+      lookups.map(async (lookup) => {
+        const name = await getLocationNameFromCoordinates(
+          lookup.latitude,
+          lookup.longitude,
+          controller.signal
+        )
+
+        return [lookup.key, name] as const
+      })
+    )
+      .then((names) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setCatchLocationNames((current) => {
+          const next = { ...current }
+          let changed = false
+
+          names.forEach(([key, name]) => {
+            if (!next[key]) {
+              next[key] = name
+              changed = true
+            }
+          })
+
+          return changed ? next : current
+        })
+      })
+      .catch(() => undefined)
+
+    return () => controller.abort()
+  }, [catchLocationNames, mappedCatches])
 
   function clearFilters() {
     setSpeciesFilter("")
@@ -289,7 +379,7 @@ function CatchMap({ onBackHome }: CatchMapProps) {
               <Popup>
                 <strong>{fish.species || "Unknown species"}</strong>
                 <br />
-                {fish.locationName || "Location saved"}
+                {getCatchDisplayLocation(fish)}
                 <br />
                 Length: {formatLength(fish.length, lengthUnit)}
                 <br />
