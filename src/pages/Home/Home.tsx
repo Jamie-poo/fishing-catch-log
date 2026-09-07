@@ -125,6 +125,7 @@ type MapToolEventsProps = {
   onCenterChange: (point: LocationPoint) => void
   onFieldNotePoint: (point: LocationPoint) => void
   onIntelPoint: (point: LocationPoint) => void
+  onMapTap: () => void
   onMeasurePoint: (point: LocationPoint) => void
 }
 
@@ -469,10 +470,16 @@ function MapToolEvents({
   onCenterChange,
   onFieldNotePoint,
   onIntelPoint,
+  onMapTap,
   onMeasurePoint,
 }: MapToolEventsProps) {
+  const suppressTapUntil = useRef(0)
   const map = useMapEvents({
     click(event) {
+      if (Date.now() < suppressTapUntil.current) {
+        return
+      }
+
       const point = {
         latitude: event.latlng.lat,
         longitude: event.latlng.lng,
@@ -485,7 +492,10 @@ function MapToolEvents({
 
       if (fieldNoteOpen) {
         onFieldNotePoint(point)
+        return
       }
+
+      onMapTap()
     },
     moveend() {
       const center = map.getCenter()
@@ -494,9 +504,6 @@ function MapToolEvents({
         longitude: center.lng,
       })
     },
-    dragstart() {
-      map.closePopup()
-    },
     contextmenu(event) {
       event.originalEvent.preventDefault()
 
@@ -504,6 +511,7 @@ function MapToolEvents({
         return
       }
 
+      suppressTapUntil.current = Date.now() + 850
       onIntelPoint({
         latitude: event.latlng.lat,
         longitude: event.latlng.lng,
@@ -1198,6 +1206,13 @@ function Home({
     setSearchFocused(false)
   }
 
+  function closeMapOverlays() {
+    setWeatherOpen(false)
+    setIntelOpen(false)
+    setLayersOpen(false)
+    setSearchFocused(false)
+  }
+
   function handleCatchPopupTap(catchId: number) {
     const now = Date.now()
     const lastTap = lastCatchPopupTap.current
@@ -1239,11 +1254,12 @@ function Home({
           onCenterChange={setMapCenter}
           onFieldNotePoint={setFieldNotePoint}
           onIntelPoint={(point) => void dropIntelPoint(point)}
+          onMapTap={closeMapOverlays}
           onMeasurePoint={(point) => setMeasurePoints((current) => [...current, point])}
         />
         {currentLocation && (
           <Marker icon={currentLocationIcon} position={currentLocation}>
-            <Popup>You are here</Popup>
+            <Popup closeOnClick>You are here</Popup>
           </Marker>
         )}
         {(homeMapDisplay.catchPins ?? true) && mappedCatches.map((fish) => {
@@ -1259,6 +1275,7 @@ function Home({
                 autoPanPaddingBottomRight={[18, 132]}
                 autoPanPaddingTopLeft={[18, 230]}
                 className="map-catch-popup"
+                closeOnClick
                 keepInView
                 maxWidth={220}
               >
@@ -1291,7 +1308,7 @@ function Home({
             icon={getMapItemIcon(item, homeMapDisplay.markerNameLabels ?? true)}
             position={[item.latitude, item.longitude]}
           >
-            <Popup className="map-item-popup" maxWidth={190}>
+            <Popup closeOnClick className="map-item-popup" maxWidth={190}>
               <strong>{item.title}</strong>
               <br />
               {getMapItemTypeLabel(item)}
@@ -1328,7 +1345,7 @@ function Home({
             icon={pendingFieldNoteIcon}
             position={[fieldNotePoint.latitude, fieldNotePoint.longitude]}
           >
-            <Popup>
+            <Popup closeOnClick>
               <strong>{fieldNoteTitle || "Unsaved field note"}</strong>
               <br />
               {fieldNoteText || "Tap Save Field Note to keep this note."}
@@ -1340,7 +1357,7 @@ function Home({
             icon={intelMarkerIcon}
             position={[intelPoint.latitude, intelPoint.longitude]}
           >
-            <Popup>
+            <Popup closeOnClick>
               <strong>Intel target</strong>
               <br />
               {intelLocationName || "Pinned spot"}
@@ -1355,7 +1372,7 @@ function Home({
               selectedSearchResult.longitude,
             ]}
           >
-            <Popup className="map-item-popup" maxWidth={210}>
+            <Popup closeOnClick className="map-item-popup" maxWidth={210}>
               <strong>{selectedSearchResult.label}</strong>
               <br />
               {selectedSearchResult.detail}
