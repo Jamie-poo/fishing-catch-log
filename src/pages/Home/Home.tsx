@@ -1036,7 +1036,7 @@ function Home({
     }
 
     setWeatherOpen(true)
-    setIntelOpen(false)
+    closeIntelPanel()
     setIntelLocationName("")
     closeFieldNote()
     setLayersOpen(false)
@@ -1045,7 +1045,7 @@ function Home({
 
   async function openIntelPanel() {
     if (intelOpen) {
-      setIntelOpen(false)
+      closeIntelPanel()
       return
     }
 
@@ -1062,6 +1062,12 @@ function Home({
         "Current location intel"
       ).catch(() => undefined)
     }
+  }
+
+  function closeIntelPanel() {
+    setIntelOpen(false)
+    setIntelPoint(null)
+    setIntelLocationName("")
   }
 
   async function dropIntelPoint(point: LocationPoint) {
@@ -1097,7 +1103,7 @@ function Home({
 
     setFieldNoteOpen(true)
     setFieldNotePoint(mapCenter)
-    setIntelOpen(false)
+    closeIntelPanel()
     setWeatherOpen(false)
     setLayersOpen(false)
 
@@ -1108,7 +1114,7 @@ function Home({
 
   function toggleLayers() {
     setLayersOpen((open) => !open)
-    setIntelOpen(false)
+    closeIntelPanel()
     setWeatherOpen(false)
     closeFieldNote()
   }
@@ -1193,7 +1199,7 @@ function Home({
     setSearchFocused(false)
     setSearchRequest((current) => current + 1)
     setWeatherOpen(false)
-    setIntelOpen(false)
+    closeIntelPanel()
     setLayersOpen(false)
     closeFieldNote()
     setActiveTool("browse")
@@ -1208,7 +1214,7 @@ function Home({
 
   function closeMapOverlays() {
     setWeatherOpen(false)
-    setIntelOpen(false)
+    closeIntelPanel()
     setLayersOpen(false)
     setSearchFocused(false)
   }
@@ -1276,7 +1282,6 @@ function Home({
                 autoPanPaddingTopLeft={[18, 230]}
                 className="map-catch-popup"
                 closeOnClick
-                keepInView
                 maxWidth={220}
               >
                 <button
@@ -1538,7 +1543,7 @@ function Home({
                 return
               }
 
-              setIntelOpen(false)
+              closeIntelPanel()
               setWeatherOpen(false)
               closeFieldNote()
               setLayersOpen(false)
@@ -1601,7 +1606,7 @@ function Home({
         <section className="map-tool-card home-map-tool-card intel-map-card">
           <header>
             <h2>Murray Cod Intel</h2>
-            <button type="button" onClick={() => setIntelOpen(false)}>Close</button>
+            <button type="button" onClick={closeIntelPanel}>Close</button>
           </header>
           <p className="page-note">
             {weatherStatus || "Hold the map to drop an intel pin."}
