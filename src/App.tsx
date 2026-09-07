@@ -10,6 +10,7 @@ import Settings from "./pages/Settings/Settings"
 
 function App() {
   const [currentPage, setCurrentPage] = useState("home")
+  const [catchToOpen, setCatchToOpen] = useState<number | null>(null)
 
   let page = null
 
@@ -17,6 +18,10 @@ function App() {
     page = (
       <Home
         onOpenCatches={() => setCurrentPage("catches")}
+        onOpenCatchDetail={(catchId) => {
+          setCatchToOpen(catchId)
+          setCurrentPage("catches")
+        }}
         onOpenStats={() => setCurrentPage("stats")}
         onOpenCatchMap={() => setCurrentPage("catch-map")}
         onOpenRecords={() => setCurrentPage("records")}
@@ -30,6 +35,8 @@ function App() {
     page = (
       <Catches
         onBackHome={() => setCurrentPage("home")}
+        initialSelectedCatchId={catchToOpen}
+        onInitialSelectedCatchHandled={() => setCatchToOpen(null)}
       />
     )
   }

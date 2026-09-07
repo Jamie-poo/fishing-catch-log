@@ -20,6 +20,7 @@ import { mapWeatherOptions } from "../../data/mapWeather"
 import { useCatches } from "../../data/useCatches"
 import { useCatchLogSettings } from "../../data/useCatchLogSettings"
 import PhotoAddMenu from "../../components/PhotoAddMenu"
+import { getCatchPhotos } from "../../data/catchPhotos"
 
 const fishMarkerIcon = L.divIcon({
   className: "catch-fish-marker",
@@ -73,6 +74,7 @@ const mapTiles = {
 
 type HomeProps = {
   onOpenCatches: () => void
+  onOpenCatchDetail: (catchId: number) => void
   onOpenStats: () => void
   onOpenCatchMap: () => void
   onOpenRecords: () => void
@@ -495,6 +497,7 @@ function MapToolEvents({
 
 function Home({
   onOpenCatches,
+  onOpenCatchDetail,
   onOpenStats,
   onOpenCatchMap,
   onOpenRecords,
@@ -550,6 +553,7 @@ function Home({
   const [dropWaypointWithNote, setDropWaypointWithNote] = useState(false)
   const [measurePoints, setMeasurePoints] = useState<LocationPoint[]>([])
   const [catchLocationNames, setCatchLocationNames] = useState<Record<string, string>>({})
+  const lastCatchPopupTap = useRef<{ id: number; time: number } | null>(null)
 
   const mappedCatches = catches.filter(
     (fish) => fish.latitude !== null && fish.longitude !== null
@@ -1113,6 +1117,19 @@ function Home({
     setSearchFocused(false)
   }
 
+  function handleCatchPopupTap(catchId: number) {
+    const now = Date.now()
+    const lastTap = lastCatchPopupTap.current
+
+    if (lastTap?.id === catchId && now - lastTap.time < 420) {
+      lastCatchPopupTap.current = null
+      onOpenCatchDetail(catchId)
+      return
+    }
+
+    lastCatchPopupTap.current = { id: catchId, time: now }
+  }
+
   return (
     <main className="phone-map-screen">
       <MapContainer
@@ -1146,19 +1163,39 @@ function Home({
             <Popup>You are here</Popup>
           </Marker>
         )}
-        {(homeMapDisplay.catchPins ?? true) && mappedCatches.map((fish) => (
-          <Marker
-            key={fish.id}
-            icon={fishMarkerIcon}
-            position={[fish.latitude!, fish.longitude!]}
-          >
-            <Popup>
-              <strong>{fish.species || "Unknown species"}</strong>
-              <br />
-              {getCatchDisplayLocation(fish)}
-            </Popup>
-          </Marker>
-        ))}
+        {(homeMapDisplay.catchPins ?? true) && mappedCatches.map((fish) => {
+          const mainPhoto = getCatchPhotos(fish)[0]
+
+          return (
+            <Marker
+              key={fish.id}
+              icon={fishMarkerIcon}
+              position={[fish.latitude!, fish.longitude!]}
+            >
+              <Popup className="map-catch-popup" maxWidth={220}>
+                <button
+                  className="map-catch-popup-card"
+                  onDoubleClick={() => onOpenCatchDetail(fish.id)}
+                  onTouchEnd={() => handleCatchPopupTap(fish.id)}
+                  type="button"
+                >
+                  {mainPhoto ? (
+                    <img
+                      src={mainPhoto}
+                      alt={fish.species || "Recorded catch"}
+                    />
+                  ) : (
+                    <span className="map-catch-popup-placeholder">No photo</span>
+                  )}
+                  <strong>{fish.species || "Unknown species"}</strong>
+                  <span>{formatLength(fish.length, lengthUnit)} · {formatWeight(fish.weight, weightUnit)}</span>
+                  <span>{getCatchDisplayLocation(fish)}</span>
+                  <span>{new Date(fish.dateTime).toLocaleString()}</span>
+                </button>
+              </Popup>
+            </Marker>
+          )
+        })}
         {visibleMapItems.map((item) => (
           <Marker
             key={item.id}

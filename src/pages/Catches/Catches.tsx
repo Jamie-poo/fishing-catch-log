@@ -19,7 +19,9 @@ import { useCatches } from "../../data/useCatches"
 import { useCatchLogSettings } from "../../data/useCatchLogSettings"
 
 type CatchesProps = {
+  initialSelectedCatchId?: number | null
   onBackHome: () => void
+  onInitialSelectedCatchHandled?: () => void
   startInRecordMode?: boolean
 }
 type FormValues = Record<string, string>
@@ -89,11 +91,18 @@ function getPressureTrendHours(value: string) {
   return match[2].toLowerCase() === "d" ? amount * 24 : amount
 }
 
-function Catches({ onBackHome, startInRecordMode = false }: CatchesProps) {
+function Catches({
+  initialSelectedCatchId = null,
+  onBackHome,
+  onInitialSelectedCatchHandled,
+  startInRecordMode = false,
+}: CatchesProps) {
   const { catches, setCatches } = useCatches()
   const { depthUnit, groups, fields, lengthUnit, pressureTrendHours, weightUnit } = useCatchLogSettings()
   const [showForm, setShowForm] = useState(startInRecordMode)
-  const [selectedCatchId, setSelectedCatchId] = useState<number | null>(null)
+  const [selectedCatchId, setSelectedCatchId] = useState<number | null>(
+    startInRecordMode ? null : initialSelectedCatchId
+  )
   const [editingCatchId, setEditingCatchId] = useState<number | null>(null)
   const [formValues, setFormValues] = useState<FormValues>(emptyForm)
   const [fishPhotos, setFishPhotos] = useState<string[]>([])
@@ -200,6 +209,14 @@ function Catches({ onBackHome, startInRecordMode = false }: CatchesProps) {
       requestCurrentLocation()
     }
   }, [editingCatchId, requestCurrentLocation, showForm])
+
+  useEffect(() => {
+    if (initialSelectedCatchId === null) {
+      return
+    }
+
+    onInitialSelectedCatchHandled?.()
+  }, [initialSelectedCatchId, onInitialSelectedCatchHandled])
 
   function fieldVisible(group: CatchFieldGroup, field: CatchField) {
     return (groups[group.key] ?? true) && (fields[fieldId(group.key, field.key)] ?? true)
