@@ -14,6 +14,7 @@ import "leaflet/dist/leaflet.css"
 import { getAutomaticEnvironmentData } from "../../data/environmentData"
 import { formatLength, formatWeight } from "../../data/measurements"
 import {
+  formatCoordinateLocation,
   getLocationNameFromCoordinates,
 } from "../../data/location"
 import { mapWeatherOptions } from "../../data/mapWeather"
@@ -53,6 +54,13 @@ const pendingFieldNoteIcon = L.divIcon({
 const searchMarkerIcon = L.divIcon({
   className: "map-tool-marker search-result-marker",
   html: "<span><b>S</b></span>",
+  iconSize: [34, 42],
+  iconAnchor: [17, 42],
+})
+
+const intelMarkerIcon = L.divIcon({
+  className: "map-tool-marker intel-target-marker",
+  html: "<span><b>I</b></span>",
   iconSize: [34, 42],
   iconAnchor: [17, 42],
 })
@@ -113,8 +121,10 @@ type MapViewportProps = {
 type MapToolEventsProps = {
   activeTool: MapTool
   fieldNoteOpen: boolean
+  intelOpen: boolean
   onCenterChange: (point: LocationPoint) => void
   onFieldNotePoint: (point: LocationPoint) => void
+  onIntelPoint: (point: LocationPoint) => void
   onMeasurePoint: (point: LocationPoint) => void
 }
 
@@ -455,8 +465,10 @@ function MapViewport({
 function MapToolEvents({
   activeTool,
   fieldNoteOpen,
+  intelOpen,
   onCenterChange,
   onFieldNotePoint,
+  onIntelPoint,
   onMeasurePoint,
 }: MapToolEventsProps) {
   const map = useMapEvents({
@@ -484,6 +496,18 @@ function MapToolEvents({
     },
     dragstart() {
       map.closePopup()
+    },
+    contextmenu(event) {
+      event.originalEvent.preventDefault()
+
+      if (!intelOpen) {
+        return
+      }
+
+      onIntelPoint({
+        latitude: event.latlng.lat,
+        longitude: event.latlng.lng,
+      })
     },
   })
 
@@ -547,6 +571,8 @@ function Home({
   const [weatherOpen, setWeatherOpen] = useState(false)
   const [weatherStatus, setWeatherStatus] = useState("")
   const [intelOpen, setIntelOpen] = useState(false)
+  const [intelPoint, setIntelPoint] = useState<LocationPoint | null>(null)
+  const [intelLocationName, setIntelLocationName] = useState("")
   const [mapItems, setMapItems] = useState<SavedMapItem[]>(loadMapItems)
   const [fieldNoteOpen, setFieldNoteOpen] = useState(false)
   const [fieldNotePoint, setFieldNotePoint] = useState<LocationPoint | null>(null)
@@ -945,19 +971,49 @@ function Home({
     }
   }, [currentLocation, homeSearch.places, mapSearchQuery])
 
-  async function loadWeatherValues(statusLabel: string) {
+  async function loadWeatherValues(
+    statusLabel: string,
+    targetLocation?: LocationPoint,
+    successLabel = "Current weather"
+  ) {
     setWeatherStatus(statusLabel)
 
     try {
-      const location = await getCurrentPosition()
-      setCurrentLocation([location.latitude, location.longitude])
+      const location = targetLocation ?? await getCurrentPosition()
+
+      if (!targetLocation) {
+        setCurrentLocation([location.latitude, location.longitude])
+      }
+
       const values = await getAutomaticEnvironmentData(
         location.latitude,
         location.longitude,
         pressureTrendHours
       )
+      let nextStatus = successLabel
+
+      if (targetLocation) {
+        try {
+          const locationName = await getLocationNameFromCoordinates(
+            location.latitude,
+            location.longitude
+          )
+
+          setIntelLocationName(locationName)
+          nextStatus = `Intel for ${locationName}`
+        } catch {
+          const fallbackName = formatCoordinateLocation(
+            location.latitude,
+            location.longitude
+          )
+
+          setIntelLocationName(fallbackName)
+          nextStatus = "Intel for pinned spot"
+        }
+      }
+
       setWeatherValues(values)
-      setWeatherStatus("Current weather")
+      setWeatherStatus(nextStatus)
       return values
     } catch {
       setWeatherStatus("Weather unavailable")
@@ -973,6 +1029,7 @@ function Home({
 
     setWeatherOpen(true)
     setIntelOpen(false)
+    setIntelLocationName("")
     closeFieldNote()
     setLayersOpen(false)
     await loadWeatherValues("Finding current weather...").catch(() => undefined)
@@ -988,10 +1045,31 @@ function Home({
     setWeatherOpen(false)
     closeFieldNote()
     setLayersOpen(false)
+    setActiveTool("browse")
 
     if (!weatherValues["weather.pressureTrend"]) {
-      await loadWeatherValues("Building intel...").catch(() => undefined)
+      await loadWeatherValues(
+        "Building intel...",
+        undefined,
+        "Current location intel"
+      ).catch(() => undefined)
     }
+  }
+
+  async function dropIntelPoint(point: LocationPoint) {
+    setIntelPoint(point)
+    setIntelOpen(true)
+    setWeatherOpen(false)
+    closeFieldNote()
+    setLayersOpen(false)
+    setActiveTool("browse")
+    setIntelLocationName("Pinned spot")
+
+    await loadWeatherValues(
+      "Building intel for pin...",
+      point,
+      "Intel for pinned spot"
+    ).catch(() => undefined)
   }
 
   function closeFieldNote() {
@@ -1157,8 +1235,10 @@ function Home({
         <MapToolEvents
           activeTool={activeTool}
           fieldNoteOpen={fieldNoteOpen}
+          intelOpen={intelOpen}
           onCenterChange={setMapCenter}
           onFieldNotePoint={setFieldNotePoint}
+          onIntelPoint={(point) => void dropIntelPoint(point)}
           onMeasurePoint={(point) => setMeasurePoints((current) => [...current, point])}
         />
         {currentLocation && (
@@ -1252,6 +1332,18 @@ function Home({
               <strong>{fieldNoteTitle || "Unsaved field note"}</strong>
               <br />
               {fieldNoteText || "Tap Save Field Note to keep this note."}
+            </Popup>
+          </Marker>
+        )}
+        {intelOpen && intelPoint && (
+          <Marker
+            icon={intelMarkerIcon}
+            position={[intelPoint.latitude, intelPoint.longitude]}
+          >
+            <Popup>
+              <strong>Intel target</strong>
+              <br />
+              {intelLocationName || "Pinned spot"}
             </Popup>
           </Marker>
         )}
@@ -1489,11 +1581,14 @@ function Home({
       )}
 
       {intelOpen && (homeMapControls.intel ?? true) && (
-        <section className="map-tool-card home-map-tool-card">
+        <section className="map-tool-card home-map-tool-card intel-map-card">
           <header>
             <h2>Murray Cod Intel</h2>
             <button type="button" onClick={() => setIntelOpen(false)}>Close</button>
           </header>
+          <p className="page-note">
+            {weatherStatus || "Hold the map to drop an intel pin."}
+          </p>
           <div className="intel-score">
             <strong>{intel.score}</strong>
             <span>{intel.label}</span>

@@ -982,6 +982,11 @@ h3 {
   backdrop-filter: blur(14px);
 }
 
+.intel-map-card {
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  max-height: min(44svh, 380px);
+}
+
 .home-layer-picker {
   position: absolute;
   right: 72px;
@@ -1557,6 +1562,11 @@ h3 {
 .search-result-marker span {
   background: #e34234;
   color: white;
+}
+
+.intel-target-marker span {
+  background: #61da7c;
+  color: #07100d;
 }
 
 .catch-log-page {
