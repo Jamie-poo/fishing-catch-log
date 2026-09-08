@@ -517,6 +517,8 @@ function MapToolEvents({
     },
     contextmenu(event) {
       event.originalEvent.preventDefault()
+      event.originalEvent.stopPropagation()
+      window.getSelection()?.removeAllRanges()
 
       if (!intelOpen && !weatherOpen) {
         return
