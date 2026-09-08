@@ -48,10 +48,11 @@ function Settings({ onBackHome }: SettingsProps) {
   }, [theme])
 
   return (
-    <main className="app-page">
-      <header className="page-topbar">
-        <button className="ghost-button" onClick={onBackHome}>Home</button>
+    <main className="app-page settings-page">
+      <header className="page-topbar settings-topbar">
+        <button className="ghost-button" type="button" onClick={onBackHome}>Home</button>
         <h1>Settings</h1>
+        <span aria-hidden="true" />
       </header>
 
       <details open className="catch-detail-section">
@@ -206,11 +207,11 @@ function Settings({ onBackHome }: SettingsProps) {
         </div>
       </details>
 
-      <h2 className="section-heading">Edit Field Notes</h2>
+      <h2 className="section-heading">Edit Field Note / Pin</h2>
       <p className="page-note">Choose which live conditions appear in the Field Note / Pin dropdown.</p>
 
       <details className="catch-detail-section">
-        <summary><strong>Field Note Conditions</strong></summary>
+        <summary><strong>Current Conditions Dropdown</strong></summary>
         <div className="settings-check-grid">
           {mapWeatherOptions.map((condition) => (
             <label key={condition.key}>

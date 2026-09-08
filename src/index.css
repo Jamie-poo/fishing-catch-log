@@ -214,6 +214,14 @@ h3 {
   text-align: center;
 }
 
+.settings-topbar {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.settings-topbar .ghost-button {
+  justify-self: start;
+}
+
 .log-screen-bar {
   position: sticky;
   top: 0;
