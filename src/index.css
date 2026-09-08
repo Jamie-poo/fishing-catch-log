@@ -1410,6 +1410,9 @@ h3 {
 .map-item-popup-card {
   display: grid;
   gap: 7px;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
 }
 
 .map-item-popup-card header {
@@ -1802,7 +1805,7 @@ h3 {
 .field-note-text-section {
   display: grid;
   gap: 10px;
-  padding: 14px;
+  padding: 18px 14px 14px;
 }
 
 .field-note-detail .catch-summary-box p {

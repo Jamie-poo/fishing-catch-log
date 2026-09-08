@@ -12,6 +12,7 @@ import FieldNotes from "./pages/FieldNotes/FieldNotes"
 function App() {
   const [currentPage, setCurrentPage] = useState("home")
   const [catchToOpen, setCatchToOpen] = useState<number | null>(null)
+  const [noteToOpen, setNoteToOpen] = useState<number | null>(null)
 
   let page = null
 
@@ -27,6 +28,10 @@ function App() {
         onOpenCatchMap={() => setCurrentPage("catch-map")}
         onOpenRecords={() => setCurrentPage("records")}
         onOpenFieldNotes={() => setCurrentPage("field-notes")}
+        onOpenFieldNoteDetail={(noteId) => {
+          setNoteToOpen(noteId)
+          setCurrentPage("field-notes")
+        }}
         onOpenSettings={() => setCurrentPage("settings")}
         onRecordCatch={() => setCurrentPage("record-catch")}
       />
@@ -80,6 +85,8 @@ function App() {
     page = (
       <FieldNotes
         onBackHome={() => setCurrentPage("home")}
+        initialSelectedNoteId={noteToOpen}
+        onInitialSelectedNoteHandled={() => setNoteToOpen(null)}
       />
     )
   }

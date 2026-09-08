@@ -101,6 +101,7 @@ type HomeProps = {
   onOpenCatchMap: () => void
   onOpenRecords: () => void
   onOpenFieldNotes: () => void
+  onOpenFieldNoteDetail: (noteId: number) => void
   onOpenSettings: () => void
   onRecordCatch: () => void
 }
@@ -532,6 +533,7 @@ function Home({
   onOpenCatchMap,
   onOpenRecords,
   onOpenFieldNotes,
+  onOpenFieldNoteDetail,
   onOpenSettings,
   onRecordCatch,
 }: HomeProps) {
@@ -592,6 +594,7 @@ function Home({
   const [measurePoints, setMeasurePoints] = useState<LocationPoint[]>([])
   const [catchLocationNames, setCatchLocationNames] = useState<Record<string, string>>({})
   const lastCatchPopupTap = useRef<{ id: number; time: number } | null>(null)
+  const lastMapItemPopupTap = useRef<{ id: number; time: number } | null>(null)
 
   const mappedCatches = catches.filter(
     (fish) => fish.latitude !== null && fish.longitude !== null
@@ -1220,6 +1223,20 @@ function Home({
     recognition.start()
   }
 
+  function updateMapItems(
+    update: SavedMapItem[] | ((current: SavedMapItem[]) => SavedMapItem[])
+  ) {
+    setMapItems((current) => {
+      const nextItems = typeof update === "function" ? update(current) : update
+      try {
+        saveMapItems(nextItems)
+      } catch (error) {
+        console.warn("Map pins could not be saved locally.", error)
+      }
+      return nextItems
+    })
+  }
+
   function saveFieldNote() {
     const title = fieldNoteTitle.trim() || "Field Note / Pin"
     const point = fieldNotePoint ?? mapCenter
@@ -1237,7 +1254,7 @@ function Home({
       conditions: noteConditionChips,
     }
 
-    setMapItems((current) =>
+    updateMapItems((current) =>
       editingMapItemId
         ? current.map((item) =>
             item.id === editingMapItemId
@@ -1250,7 +1267,7 @@ function Home({
   }
 
   function deleteMapItem(itemId: number) {
-    setMapItems((current) => current.filter((item) => item.id !== itemId))
+    updateMapItems((current) => current.filter((item) => item.id !== itemId))
   }
 
   function toggleMapStyle(style: MapStyle) {
@@ -1295,6 +1312,18 @@ function Home({
     }
 
     lastCatchPopupTap.current = { id: catchId, time: now }
+  }
+
+  function handleMapItemPopupTap(itemId: number, eventTime: number) {
+    const lastTap = lastMapItemPopupTap.current
+
+    if (lastTap?.id === itemId && eventTime - lastTap.time < 420) {
+      lastMapItemPopupTap.current = null
+      window.setTimeout(() => onOpenFieldNoteDetail(itemId), 120)
+      return
+    }
+
+    lastMapItemPopupTap.current = { id: itemId, time: eventTime }
   }
 
   return (
@@ -1396,7 +1425,20 @@ function Home({
             position={[item.latitude, item.longitude]}
           >
             <Popup autoPan={false} closeOnClick className="map-item-popup" maxWidth={190}>
-              <article className="map-item-popup-card">
+              <article
+                className="map-item-popup-card"
+                onClick={(event) => event.stopPropagation()}
+                onDoubleClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  window.setTimeout(() => onOpenFieldNoteDetail(item.id), 120)
+                }}
+                onTouchEnd={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  handleMapItemPopupTap(item.id, event.timeStamp)
+                }}
+              >
                 <header>
                   <span>{getMapItemTypeLabel(item)}</span>
                   <strong>{item.title}</strong>
@@ -1422,13 +1464,24 @@ function Home({
                   </span>
                 )}
                 <footer>
-                  <button type="button" onClick={() => editMapItem(item)}>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      editMapItem(item)
+                    }}
+                    onTouchEnd={(event) => event.stopPropagation()}
+                  >
                     Edit
                   </button>
                   <button
                     className="danger-popup-button"
                     type="button"
-                    onClick={() => deleteMapItem(item.id)}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      deleteMapItem(item.id)
+                    }}
+                    onTouchEnd={(event) => event.stopPropagation()}
                   >
                     Delete
                   </button>

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import PhotoAddMenu from "../../components/PhotoAddMenu"
 import {
   getMapItemTypeLabel,
@@ -10,6 +10,8 @@ import {
 
 type FieldNotesProps = {
   onBackHome: () => void
+  initialSelectedNoteId?: number | null
+  onInitialSelectedNoteHandled?: () => void
 }
 
 function formatCreatedAt(value: string) {
@@ -22,9 +24,15 @@ function formatCoordinates(item: SavedMapItem) {
   return `${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}`
 }
 
-function FieldNotes({ onBackHome }: FieldNotesProps) {
+function FieldNotes({
+  onBackHome,
+  initialSelectedNoteId = null,
+  onInitialSelectedNoteHandled,
+}: FieldNotesProps) {
   const [items, setItems] = useState<SavedMapItem[]>(loadMapItems)
-  const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(
+    initialSelectedNoteId
+  )
   const [editingItemId, setEditingItemId] = useState<number | null>(null)
   const [galleryItemId, setGalleryItemId] = useState<number | null>(null)
   const [title, setTitle] = useState("")
@@ -50,20 +58,32 @@ function FieldNotes({ onBackHome }: FieldNotesProps) {
       ? null
       : visibleItems.find((item) => item.id === galleryItemId) ?? null
 
+  useEffect(() => {
+    if (initialSelectedNoteId === null) return
+
+    onInitialSelectedNoteHandled?.()
+  }, [initialSelectedNoteId, onInitialSelectedNoteHandled])
+
   function updateItems(nextItems: SavedMapItem[]) {
     setItems(nextItems)
     saveMapItems(nextItems)
   }
 
   function startEditing(item: SavedMapItem) {
+    setSelectedItemId(item.id)
     setEditingItemId(item.id)
+    setGalleryItemId(null)
     setTitle(item.title)
     setNote(item.note)
     setPhotos(item.photoDataUrls ?? [])
   }
 
   function closeEditor() {
+    if (editingItemId !== null) {
+      setSelectedItemId(editingItemId)
+    }
     setEditingItemId(null)
+    setGalleryItemId(null)
     setTitle("")
     setNote("")
     setPhotos([])
