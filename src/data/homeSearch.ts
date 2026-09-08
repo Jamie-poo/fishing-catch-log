@@ -4,7 +4,7 @@ export type HomeSearchOption = {
 }
 
 export const homeSearchOptions: HomeSearchOption[] = [
-  { key: "notes", label: "Field notes / waypoints" },
+  { key: "notes", label: "Field Notes / Pins" },
   { key: "catches", label: "Logged catches" },
   { key: "places", label: "Places and roads" },
 ]

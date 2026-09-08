@@ -173,11 +173,12 @@ function escapeHtml(value: string) {
 }
 
 function getMapItemTypeLabel(item: SavedMapItem) {
-  if (item.type === "field-note-waypoint") return "Field note / waypoint"
+  if (item.type === "field-note-waypoint") return "Field Note / Pin"
+  if (item.type === "field-note") return "Field Note / Pin"
   if (item.type === "waypoint" && item.category) return `${item.category} waypoint`
   if (item.type === "waypoint") return "Waypoint"
 
-  return "Field note"
+  return "Field Note / Pin"
 }
 
 function getMapItemIcon(item: SavedMapItem, showNameLabel: boolean) {
@@ -620,12 +621,15 @@ function Home({
   const [intelPoint, setIntelPoint] = useState<LocationPoint | null>(null)
   const [intelLocationName, setIntelLocationName] = useState("")
   const [mapItems, setMapItems] = useState<SavedMapItem[]>(loadMapItems)
+  const nextMapItemId = useRef(
+    Math.max(0, ...mapItems.map((item) => item.id)) + 1
+  )
   const [fieldNoteOpen, setFieldNoteOpen] = useState(false)
   const [fieldNotePoint, setFieldNotePoint] = useState<LocationPoint | null>(null)
-  const [fieldNoteTitle, setFieldNoteTitle] = useState("Field note")
+  const [fieldNoteTitle, setFieldNoteTitle] = useState("Field Note / Pin")
   const [fieldNoteText, setFieldNoteText] = useState("")
   const [fieldNotePhotos, setFieldNotePhotos] = useState<string[]>([])
-  const [dropWaypointWithNote, setDropWaypointWithNote] = useState(false)
+  const [editingMapItemId, setEditingMapItemId] = useState<number | null>(null)
   const [measurePoints, setMeasurePoints] = useState<LocationPoint[]>([])
   const [catchLocationNames, setCatchLocationNames] = useState<Record<string, string>>({})
   const lastCatchPopupTap = useRef<{ id: number; time: number } | null>(null)
@@ -689,8 +693,16 @@ function Home({
       : "-",
     },
   ]
-  const visibleMapItems = mapItems.filter(
-    (item) => !isLegacyWaypointForFieldNote(item, mapItems)
+  const visibleMapItems = useMemo(
+    () => mapItems.filter((item) => !isLegacyWaypointForFieldNote(item, mapItems)),
+    [mapItems]
+  )
+  const visibleMapMarkers = useMemo(
+    () =>
+      visibleMapItems.filter(
+        (item) => !(fieldNoteOpen && editingMapItemId === item.id)
+      ),
+    [editingMapItemId, fieldNoteOpen, visibleMapItems]
   )
 
   const getCatchDisplayLocation = useCallback((fish: CatchLocationPoint) => {
@@ -1161,10 +1173,10 @@ function Home({
   function closeFieldNote() {
     setFieldNoteOpen(false)
     setFieldNotePoint(null)
-    setFieldNoteTitle("Field note")
+    setFieldNoteTitle("Field Note / Pin")
     setFieldNoteText("")
     setFieldNotePhotos([])
-    setDropWaypointWithNote(false)
+    setEditingMapItemId(null)
   }
 
   function toggleFieldNote() {
@@ -1182,6 +1194,22 @@ function Home({
     if (!weatherValues["weather.temperature"]) {
       void loadWeatherValues("Capturing conditions...").catch(() => undefined)
     }
+  }
+
+  function editMapItem(item: SavedMapItem) {
+    setEditingMapItemId(item.id)
+    setFieldNoteOpen(true)
+    setFieldNotePoint({
+      latitude: item.latitude,
+      longitude: item.longitude,
+    })
+    setFieldNoteTitle(item.title || "Field Note / Pin")
+    setFieldNoteText(item.note || "")
+    setFieldNotePhotos(item.photoDataUrls ?? [])
+    closeIntelPanel()
+    closeWeatherPanel()
+    setLayersOpen(false)
+    setActiveTool("browse")
   }
 
   function toggleLayers() {
@@ -1234,25 +1262,31 @@ function Home({
   }
 
   function saveFieldNote() {
-    const title = fieldNoteTitle.trim() || "Field note"
+    const title = fieldNoteTitle.trim() || "Field Note / Pin"
     const point = fieldNotePoint ?? mapCenter
     const createdAt = new Date().toISOString()
+    const savedItem: SavedMapItem = {
+      id: editingMapItemId ?? nextMapItemId.current++,
+      type: "field-note-waypoint",
+      title,
+      note: fieldNoteText.trim(),
+      category: "Field Note / Pin",
+      latitude: point.latitude,
+      longitude: point.longitude,
+      createdAt,
+      photoDataUrls: fieldNotePhotos.length > 0 ? fieldNotePhotos : undefined,
+      conditions: noteConditionChips,
+    }
 
-    setMapItems((current) => [
-      ...current,
-      {
-        id: Date.now(),
-        type: dropWaypointWithNote ? "field-note-waypoint" : "field-note",
-        title,
-        note: fieldNoteText.trim(),
-        category: dropWaypointWithNote ? "Field note / waypoint" : undefined,
-        latitude: point.latitude,
-        longitude: point.longitude,
-        createdAt,
-        photoDataUrls: fieldNotePhotos.length > 0 ? fieldNotePhotos : undefined,
-        conditions: noteConditionChips,
-      },
-    ])
+    setMapItems((current) =>
+      editingMapItemId
+        ? current.map((item) =>
+            item.id === editingMapItemId
+              ? { ...savedItem, createdAt: item.createdAt }
+              : item
+          )
+        : [...current, savedItem]
+    )
     closeFieldNote()
   }
 
@@ -1291,8 +1325,8 @@ function Home({
     setSearchFocused(false)
   }
 
-  function handleCatchPopupTap(catchId: number) {
-    const now = Date.now()
+  function handleCatchPopupTap(catchId: number, eventTime: number) {
+    const now = eventTime
     const lastTap = lastCatchPopupTap.current
 
     if (lastTap?.id === catchId && now - lastTap.time < 420) {
@@ -1375,7 +1409,7 @@ function Home({
                   onTouchEnd={(event) => {
                     event.preventDefault()
                     event.stopPropagation()
-                    handleCatchPopupTap(fish.id)
+                    handleCatchPopupTap(fish.id, event.timeStamp)
                   }}
                   type="button"
                 >
@@ -1396,41 +1430,51 @@ function Home({
             </Marker>
           )
         })}
-        {visibleMapItems.map((item) => (
+        {visibleMapMarkers.map((item) => (
           <Marker
             key={item.id}
             icon={getMapItemIcon(item, homeMapDisplay.markerNameLabels ?? true)}
             position={[item.latitude, item.longitude]}
           >
             <Popup autoPan={false} closeOnClick className="map-item-popup" maxWidth={190}>
-              <strong>{item.title}</strong>
-              <br />
-              {getMapItemTypeLabel(item)}
-              {item.note && (
-                <>
-                  <br />
-                  {item.note}
-                </>
-              )}
-              {item.conditions?.map((condition) => (
-                <span key={condition.label} className="map-popup-condition">
-                  <strong>{condition.label}</strong> {condition.value}
-                </span>
-              ))}
-              {item.photoDataUrls?.[0] && (
-                <>
-                  <br />
+              <article className="map-item-popup-card">
+                <header>
+                  <span>{getMapItemTypeLabel(item)}</span>
+                  <strong>{item.title}</strong>
+                </header>
+                {item.note && <p>{item.note}</p>}
+                {item.photoDataUrls?.[0] && (
                   <img
                     src={item.photoDataUrls[0]}
                     alt={item.title}
                     className="map-popup-photo"
                   />
-                </>
-              )}
-              <br />
-              <button type="button" onClick={() => deleteMapItem(item.id)}>
-                Delete
-              </button>
+                )}
+                <div className="map-popup-conditions">
+                  {item.conditions?.map((condition) => (
+                    <span key={condition.label}>
+                      <strong>{condition.label}</strong> {condition.value}
+                    </span>
+                  ))}
+                </div>
+                {item.photoDataUrls && item.photoDataUrls.length > 1 && (
+                  <span className="map-popup-photo-count">
+                    {item.photoDataUrls.length} photos
+                  </span>
+                )}
+                <footer>
+                  <button type="button" onClick={() => editMapItem(item)}>
+                    Edit
+                  </button>
+                  <button
+                    className="danger-popup-button"
+                    type="button"
+                    onClick={() => deleteMapItem(item.id)}
+                  >
+                    Delete
+                  </button>
+                </footer>
+              </article>
             </Popup>
           </Marker>
         ))}
@@ -1440,9 +1484,9 @@ function Home({
             position={[fieldNotePoint.latitude, fieldNotePoint.longitude]}
           >
             <Popup autoPan={false} closeOnClick>
-              <strong>{fieldNoteTitle || "Unsaved field note"}</strong>
+              <strong>{fieldNoteTitle || "Unsaved Field Note / Pin"}</strong>
               <br />
-              {fieldNoteText || "Tap Save Field Note to keep this note."}
+              {fieldNoteText || "Tap Save Pin to keep this note."}
             </Popup>
           </Marker>
         )}
@@ -1597,7 +1641,7 @@ function Home({
             onClick={toggleFieldNote}
           >
             <span>FN</span>
-            Field Note
+            Field Note / Pin
           </button>
         )}
         {(homeMapControls.recenter ?? true) && (
@@ -1735,9 +1779,9 @@ function Home({
         <section className="map-tool-card home-map-tool-card field-note-sheet">
           <header className="field-note-header">
             <div>
-              <p>Field Note</p>
+              <p>{editingMapItemId ? "Edit Field Note / Pin" : "Field Note / Pin"}</p>
               <h2>
-                Logged now · {new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                {editingMapItemId ? "Editing saved pin" : "Logged now"} · {new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
               </h2>
             </div>
             <span className="field-note-gps">{fieldNotePoint ? "GPS" : "GPS -"}</span>
@@ -1786,16 +1830,8 @@ function Home({
               ))}
             </div>
           </section>
-          <label className="drop-waypoint-toggle">
-            <span>Save as field note / waypoint</span>
-            <input
-              type="checkbox"
-              checked={dropWaypointWithNote}
-              onChange={(event) => setDropWaypointWithNote(event.target.checked)}
-            />
-          </label>
           <button className="primary-button field-note-save" type="button" onClick={saveFieldNote}>
-            Save Field Note
+            {editingMapItemId ? "Save Changes" : "Save Pin"}
           </button>
         </section>
       )}
