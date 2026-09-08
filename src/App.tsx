@@ -7,6 +7,7 @@ import { CatchesProvider } from "./data/CatchesProvider"
 import { CatchLogSettingsProvider } from "./data/CatchLogSettingsProvider"
 import Records from "./pages/Records/Records"
 import Settings from "./pages/Settings/Settings"
+import FieldNotes from "./pages/FieldNotes/FieldNotes"
 
 function App() {
   const [currentPage, setCurrentPage] = useState("home")
@@ -25,6 +26,7 @@ function App() {
         onOpenStats={() => setCurrentPage("stats")}
         onOpenCatchMap={() => setCurrentPage("catch-map")}
         onOpenRecords={() => setCurrentPage("records")}
+        onOpenFieldNotes={() => setCurrentPage("field-notes")}
         onOpenSettings={() => setCurrentPage("settings")}
         onRecordCatch={() => setCurrentPage("record-catch")}
       />
@@ -71,6 +73,14 @@ function App() {
      <Records
       onBackHome={() => setCurrentPage("home")}
      />
+    )
+  }
+
+  if (currentPage === "field-notes") {
+    page = (
+      <FieldNotes
+        onBackHome={() => setCurrentPage("home")}
+      />
     )
   }
 

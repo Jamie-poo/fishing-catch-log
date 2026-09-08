@@ -18,6 +18,13 @@ import {
   getLocationNameFromCoordinates,
 } from "../../data/location"
 import { mapWeatherOptions } from "../../data/mapWeather"
+import {
+  getMapItemTypeLabel,
+  isLegacyWaypointForFieldNote,
+  loadMapItems,
+  saveMapItems,
+  type SavedMapItem,
+} from "../../data/mapItems"
 import { useCatches } from "../../data/useCatches"
 import { useCatchLogSettings } from "../../data/useCatchLogSettings"
 import PhotoAddMenu from "../../components/PhotoAddMenu"
@@ -93,6 +100,7 @@ type HomeProps = {
   onOpenStats: () => void
   onOpenCatchMap: () => void
   onOpenRecords: () => void
+  onOpenFieldNotes: () => void
   onOpenSettings: () => void
   onRecordCatch: () => void
 }
@@ -100,17 +108,6 @@ type HomeProps = {
 type LocationPoint = {
   latitude: number
   longitude: number
-}
-
-type SavedMapItem = LocationPoint & {
-  id: number
-  type: "waypoint" | "field-note" | "field-note-waypoint"
-  title: string
-  note: string
-  category?: string
-  createdAt: string
-  photoDataUrls?: string[]
-  conditions?: { label: string; value: string }[]
 }
 
 type MapStyle = keyof typeof mapTiles
@@ -151,18 +148,6 @@ type CatchLocationPoint = {
   locationName?: string
 }
 
-function loadMapItems() {
-  const saved = localStorage.getItem("catch-map-items")
-  if (!saved) return []
-
-  try {
-    const parsed = JSON.parse(saved)
-    return Array.isArray(parsed) ? (parsed as SavedMapItem[]) : []
-  } catch {
-    return []
-  }
-}
-
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -170,15 +155,6 @@ function escapeHtml(value: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;")
-}
-
-function getMapItemTypeLabel(item: SavedMapItem) {
-  if (item.type === "field-note-waypoint") return "Field Note / Pin"
-  if (item.type === "field-note") return "Field Note / Pin"
-  if (item.type === "waypoint" && item.category) return `${item.category} waypoint`
-  if (item.type === "waypoint") return "Waypoint"
-
-  return "Field Note / Pin"
 }
 
 function getMapItemIcon(item: SavedMapItem, showNameLabel: boolean) {
@@ -203,24 +179,6 @@ function getMapItemIcon(item: SavedMapItem, showNameLabel: boolean) {
     iconSize: title ? [156, 64] : [34, 42],
     iconAnchor: [17, 42],
   })
-}
-
-function isLegacyWaypointForFieldNote(item: SavedMapItem, items: SavedMapItem[]) {
-  if (
-    item.type !== "waypoint" ||
-    item.category !== "Field note" ||
-    item.note !== "Created from field note"
-  ) {
-    return false
-  }
-
-  return items.some(
-    (other) =>
-      other.type === "field-note" &&
-      other.title === item.title &&
-      Math.abs(other.latitude - item.latitude) < 0.000001 &&
-      Math.abs(other.longitude - item.longitude) < 0.000001
-  )
 }
 
 function getCatchLocationKey(fish: CatchLocationPoint) {
@@ -573,6 +531,7 @@ function Home({
   onOpenStats,
   onOpenCatchMap,
   onOpenRecords,
+  onOpenFieldNotes,
   onOpenSettings,
   onRecordCatch,
 }: HomeProps) {
@@ -828,7 +787,7 @@ function Home({
 
   useEffect(() => {
     try {
-      localStorage.setItem("catch-map-items", JSON.stringify(mapItems))
+      saveMapItems(mapItems)
     } catch (error) {
       console.warn("Map items could not be saved locally.", error)
     }
@@ -1889,6 +1848,9 @@ function Home({
         </button>
         <button type="button" onClick={onOpenStats}>
           <span>Stats</span>
+        </button>
+        <button type="button" onClick={onOpenFieldNotes}>
+          <span>Notes</span>
         </button>
         <button type="button" onClick={onOpenSettings}>
           <span>Settings</span>
