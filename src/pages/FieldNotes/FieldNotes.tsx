@@ -4,6 +4,8 @@ import {
   getMapItemTypeLabel,
   isLegacyWaypointForFieldNote,
   loadMapItems,
+  loadStoredMapItems,
+  mergeMapItems,
   saveMapItems,
   type SavedMapItem,
 } from "../../data/mapItems"
@@ -63,6 +65,24 @@ function FieldNotes({
 
     onInitialSelectedNoteHandled?.()
   }, [initialSelectedNoteId, onInitialSelectedNoteHandled])
+
+  useEffect(() => {
+    let isMounted = true
+
+    loadStoredMapItems()
+      .then((storedItems) => {
+        if (!isMounted) return
+
+        setItems((currentItems) => mergeMapItems(storedItems, currentItems))
+      })
+      .catch((error) => {
+        console.warn("Field notes could not be loaded from device storage.", error)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   function updateItems(nextItems: SavedMapItem[]) {
     setItems(nextItems)
@@ -191,9 +211,27 @@ function FieldNotes({
     return (
       <main className="app-page field-notes-page">
         <header className="log-screen-bar">
-          <button className="topbar-button" onClick={closeEditor}>Back</button>
+          <button
+            className="topbar-button"
+            type="button"
+            onClick={(event) => {
+              event.preventDefault()
+              closeEditor()
+            }}
+          >
+            Back
+          </button>
           <h1>Edit Pin</h1>
-          <button className="topbar-button" onClick={saveEditedItem}>Save</button>
+          <button
+            className="topbar-button"
+            type="button"
+            onClick={(event) => {
+              event.preventDefault()
+              saveEditedItem()
+            }}
+          >
+            Save
+          </button>
         </header>
 
         <section className="catch-detail-section field-note-editor">

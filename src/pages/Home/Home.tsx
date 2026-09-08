@@ -22,6 +22,8 @@ import {
   getMapItemTypeLabel,
   isLegacyWaypointForFieldNote,
   loadMapItems,
+  loadStoredMapItems,
+  mergeMapItems,
   saveMapItems,
   type SavedMapItem,
 } from "../../data/mapItems"
@@ -789,12 +791,27 @@ function Home({
     summaryMetrics.length > 0 || (homeSummary.mapButton ?? true)
 
   useEffect(() => {
-    try {
-      saveMapItems(mapItems)
-    } catch (error) {
-      console.warn("Map items could not be saved locally.", error)
+    let isMounted = true
+
+    loadStoredMapItems()
+      .then((storedItems) => {
+        if (!isMounted) return
+
+        setMapItems((currentItems) => {
+          const mergedItems = mergeMapItems(storedItems, currentItems)
+          nextMapItemId.current =
+            Math.max(0, ...mergedItems.map((item) => item.id)) + 1
+          return mergedItems
+        })
+      })
+      .catch((error) => {
+        console.warn("Map pins could not be loaded from device storage.", error)
+      })
+
+    return () => {
+      isMounted = false
     }
-  }, [mapItems])
+  }, [])
 
   useEffect(() => {
     if (!canUseGeolocation) {
