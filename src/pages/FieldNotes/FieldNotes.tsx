@@ -379,7 +379,7 @@ function FieldNotes({
           )}
 
           {selectedItem.photoDataUrls && selectedItem.photoDataUrls.length > 1 && (
-            <section className="catch-detail-section">
+            <section className="catch-detail-section field-note-photos-section">
               <h2>Photos</h2>
               <div className="field-note-photo-grid">
                 {selectedItem.photoDataUrls.map((photo, index) => (

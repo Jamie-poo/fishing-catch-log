@@ -1850,6 +1850,17 @@ h3 {
   margin-top: 12px;
 }
 
+.field-note-photos-section {
+  display: grid;
+  gap: 12px;
+  padding: 18px 14px 14px;
+}
+
+.field-note-photos-section h2 {
+  margin: 0;
+  line-height: 1.2;
+}
+
 .field-note-editor {
   display: grid;
   gap: 14px;
@@ -1879,13 +1890,13 @@ h3 {
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--surface-soft);
-  padding: 0;
+  padding: 6px;
 }
 
 .field-note-photo-grid img {
   width: 100%;
   aspect-ratio: 1.2;
-  border-radius: var(--radius);
+  border-radius: 7px;
   object-fit: cover;
 }
 
