@@ -4,6 +4,7 @@ export type MapWeatherOption = {
 }
 
 export const mapWeatherOptions: MapWeatherOption[] = [
+  { key: "weather.conditions", label: "Conditions" },
   { key: "weather.temperature", label: "Temperature" },
   { key: "weather.rain", label: "Rain" },
   { key: "weather.timeSinceLastRain", label: "Time since last rain" },

@@ -10,6 +10,7 @@ type OpenMeteoResponse = {
     pressure_msl?: number
     wind_speed_10m?: number
     wind_direction_10m?: number
+    weather_code?: number
   }
   hourly?: {
     time?: string[]
@@ -85,6 +86,24 @@ function formatMoonIllumination(phase: number | undefined) {
   if (phase === undefined) return ""
   const illumination = (1 - Math.cos(2 * Math.PI * phase)) / 2
   return `${Math.round(illumination * 100)}%`
+}
+
+function formatWeatherCode(code: number | undefined) {
+  if (code === undefined) return ""
+
+  if (code === 0) return "Clear"
+  if (code === 1) return "Mostly clear"
+  if (code === 2) return "Partly cloudy"
+  if (code === 3) return "Cloudy"
+  if (code === 45 || code === 48) return "Fog"
+  if ([51, 53, 55, 56, 57].includes(code)) return "Drizzle"
+  if ([61, 63, 65, 66, 67].includes(code)) return "Rain"
+  if ([71, 73, 75, 77].includes(code)) return "Snow"
+  if ([80, 81, 82].includes(code)) return "Showers"
+  if ([85, 86].includes(code)) return "Snow showers"
+  if ([95, 96, 99].includes(code)) return "Thunderstorm"
+
+  return "Weather recorded"
 }
 
 function findNearestHourlyIndex(times: string[] | undefined, referenceTime?: string) {
@@ -210,12 +229,25 @@ function formatPressureTrend(
   const startingPressure = currentPressure ?? getHourlyValue(hourlyPressure, currentIndex)
   if (startingPressure === undefined || !hourlyPressure?.length || currentIndex < 0) return ""
 
-  const trendIndex = Math.min(currentIndex + trendHours, hourlyPressure.length - 1)
-  const futurePressure = getHourlyValue(hourlyPressure, trendIndex)
-  if (futurePressure === undefined || trendIndex === currentIndex) return ""
+  const current = currentTime ? new Date(currentTime).getTime() : Date.now()
+  if (Number.isNaN(current)) return ""
 
-  const difference = Number((futurePressure - startingPressure).toFixed(1))
-  const hours = Math.max(1, trendIndex - currentIndex)
+  const trendTime = current - trendHours * 60 * 60 * 1000
+  const trendIndex = findNearestHourlyIndex(
+    hourlyTimes,
+    new Date(trendTime).toISOString()
+  )
+  const previousPressure = getHourlyValue(hourlyPressure, trendIndex)
+  if (previousPressure === undefined || trendIndex === currentIndex) return ""
+
+  const trendTimestamp = hourlyTimes?.[trendIndex]
+    ? new Date(hourlyTimes[trendIndex]).getTime()
+    : trendTime
+  const hours = Math.max(
+    1,
+    Math.round(Math.abs(current - trendTimestamp) / (60 * 60 * 1000))
+  )
+  const difference = Number((startingPressure - previousPressure).toFixed(1))
   const direction = Math.abs(difference) < 0.5 ? "Steady" : difference > 0 ? "Rising" : "Falling"
   const signedDifference = difference > 0 ? `+${difference}` : String(difference)
 
@@ -256,6 +288,7 @@ export async function getAutomaticEnvironmentData(
       "pressure_msl",
       "wind_speed_10m",
       "wind_direction_10m",
+      "weather_code",
     ].join(","),
     hourly: ["pressure_msl", "precipitation", "rain", "visibility"].join(","),
     daily: ["sunrise", "sunset", "moonrise", "moonset", "moon_phase"].join(","),
@@ -282,6 +315,7 @@ export async function getAutomaticEnvironmentData(
   const moonset = daily.moonset?.[dailyIndex]
 
   return {
+    "weather.conditions": formatWeatherCode(current.weather_code),
     "weather.temperature": formatTemperature(current.temperature_2m),
     "weather.rain": formatNumber(current.rain ?? current.precipitation, "mm"),
     "weather.timeSinceLastRain": formatTimeSinceLastRain(hourly, current.time),

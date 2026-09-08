@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import CatchMap from "../../components/CatchMap"
 import PhotoAddMenu from "../../components/PhotoAddMenu"
 import PhotoPicker from "../../components/PhotoPicker"
-import type { CatchRecord } from "../../data/catchData"
+import type { CatchRecord, EnvironmentSnapshot } from "../../data/catchData"
 import { getCatchPhotos, withCatchPhotos } from "../../data/catchPhotos"
 import { catchFieldGroups, fieldId, type CatchField, type CatchFieldGroup } from "../../data/catchStructure"
 import { getAutomaticEnvironmentData } from "../../data/environmentData"
@@ -74,6 +74,46 @@ function detailsFromForm(values: FormValues) {
       ])
       .filter(([, values]) => Object.keys(values).length > 0)
   )
+}
+
+function getEnvironmentValues(values: FormValues) {
+  return Object.fromEntries(
+    catchFieldGroups
+      .filter((group) => group.section === "environment")
+      .flatMap((group) =>
+        group.fields.map((field) => [
+          fieldId(group.key, field.key),
+          values[fieldId(group.key, field.key)] ?? "",
+        ])
+      )
+      .filter(([, value]) => value !== "")
+  )
+}
+
+function needsLiveEnvironment(values: FormValues) {
+  return (
+    !values["weather.conditions"] ||
+    !values["weather.pressure"] ||
+    !values["weather.pressureTrend"] ||
+    !values["sun.sunrise"] ||
+    !values["moon.moonrise"]
+  )
+}
+
+function mergeEnvironmentValues(
+  values: FormValues,
+  environmentValues: FormValues,
+  replaceExisting: boolean
+) {
+  const nextValues = { ...values }
+
+  Object.entries(environmentValues).forEach(([key, value]) => {
+    if (!value) return
+    if (!replaceExisting && nextValues[key]) return
+    nextValues[key] = value
+  })
+
+  return nextValues
 }
 
 function cleanInputNumber(value: number) {
@@ -158,20 +198,14 @@ function Catches({
 
     try {
       const environmentValues = await getAutomaticEnvironmentData(latitude, longitude, pressureTrendHours)
-      setFormValues((current) => {
-        const nextValues = { ...current }
-
-        Object.entries(environmentValues).forEach(([key, value]) => {
-          if (!value) return
-          if (!replaceExisting && nextValues[key]) return
-          nextValues[key] = value
-        })
-
-        return nextValues
-      })
+      setFormValues((current) =>
+        mergeEnvironmentValues(current, environmentValues, replaceExisting)
+      )
       setEnvironmentStatus("Weather, sun, and moon data added.")
+      return environmentValues
     } catch {
       setEnvironmentStatus("Automatic environmental data could not be added.")
+      return {}
     }
   }, [pressureTrendHours])
 
@@ -301,14 +335,44 @@ function Catches({
     setShowForm(true)
   }
 
-  function buildCatch(id: number): CatchRecord {
-    const enteredDate = formValues["header.dateTime"]
+  async function getValuesForSave() {
+    if (!formLocation || !needsLiveEnvironment(formValues)) {
+      return formValues
+    }
+
+    setEnvironmentStatus("Saving current environment snapshot...")
+    const environmentValues = await fillEnvironmentFromCoordinates(
+      formLocation.latitude,
+      formLocation.longitude,
+      false
+    )
+    return mergeEnvironmentValues(formValues, environmentValues, false)
+  }
+
+  function buildEnvironmentSnapshot(values: FormValues): EnvironmentSnapshot | undefined {
+    const environmentValues = getEnvironmentValues(values)
+
+    if (Object.keys(environmentValues).length === 0) {
+      return undefined
+    }
+
+    return {
+      capturedAt: new Date().toISOString(),
+      source: "open-meteo",
+      latitude: formLocation?.latitude ?? null,
+      longitude: formLocation?.longitude ?? null,
+      values: environmentValues,
+    }
+  }
+
+  function buildCatch(id: number, values: FormValues = formValues): CatchRecord {
+    const enteredDate = values["header.dateTime"]
     const parsedDate = enteredDate ? new Date(enteredDate) : new Date()
     const dateTime = Number.isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString()
-    const details = detailsFromForm(formValues)
-    const lengthValue = formValues["header.length"]
-    const weightValue = formValues["header.weight"]
-    const ouncesValue = formValues["header.weightOunces"]
+    const details = detailsFromForm(values)
+    const lengthValue = values["header.length"]
+    const weightValue = values["header.weight"]
+    const ouncesValue = values["header.weightOunces"]
     const length =
       lengthValue === ""
         ? null
@@ -327,26 +391,29 @@ function Catches({
       dateTime,
       latitude: formLocation?.latitude ?? null,
       longitude: formLocation?.longitude ?? null,
-      species: formValues["header.species"]?.trim() ?? "",
+      species: values["header.species"]?.trim() ?? "",
       length,
       weight,
-      locationName: formValues["header.locationName"]?.trim() || undefined,
+      locationName: values["header.locationName"]?.trim() || undefined,
       notes: details.journal?.catchNotes ?? "",
       photoDataUrl: fishPhotos[0] || undefined,
       photoDataUrls: fishPhotos.length > 0 ? fishPhotos : undefined,
       details,
+      environmentSnapshot: buildEnvironmentSnapshot(values),
     }
   }
 
-  function saveCatch() {
+  async function saveCatch() {
+    const valuesForSave = await getValuesForSave()
+
     if (editingCatchId !== null) {
-      setCatches((current) => current.map((fish) => fish.id === editingCatchId ? buildCatch(fish.id) : fish))
+      setCatches((current) => current.map((fish) => fish.id === editingCatchId ? buildCatch(fish.id, valuesForSave) : fish))
       setSelectedCatchId(editingCatchId)
       resetForm()
       return
     }
 
-    const newCatch = buildCatch(Date.now())
+    const newCatch = buildCatch(Date.now(), valuesForSave)
     setCatches((current) => [...current, newCatch])
     setSelectedCatchId(newCatch.id)
     resetForm()

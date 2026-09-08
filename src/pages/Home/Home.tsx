@@ -676,7 +676,7 @@ function Home({
   const noteConditionChips = [
     {
       label: "Weather",
-      value: `${weatherValues["weather.temperature"] || "-"} ${weatherValues["weather.cloudCover"] || ""}`.trim(),
+      value: `${weatherValues["weather.temperature"] || "-"} ${weatherValues["weather.conditions"] || weatherValues["weather.cloudCover"] || ""}`.trim(),
     },
     {
       label: "Wind",

@@ -1,3 +1,11 @@
+export type EnvironmentSnapshot = {
+  capturedAt: string
+  source: "open-meteo"
+  latitude: number | null
+  longitude: number | null
+  values: Record<string, string>
+}
+
 export type CatchRecord = {
   id: number
   dateTime: string
@@ -11,4 +19,5 @@ export type CatchRecord = {
   photoDataUrls?: string[]
   locationName?: string
   details?: Record<string, Record<string, string>>
+  environmentSnapshot?: EnvironmentSnapshot
 }

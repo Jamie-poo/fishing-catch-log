@@ -32,6 +32,7 @@ export const catchFieldGroups: CatchFieldGroup[] = [
     section: "environment",
     automatic: true,
     fields: [
+      { key: "conditions", label: "Conditions" },
       { key: "temperature", label: "Temperature" },
       { key: "rain", label: "Rain" },
       { key: "timeSinceLastRain", label: "Time since last rain" },
