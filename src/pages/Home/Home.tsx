@@ -549,12 +549,17 @@ function MapToolEvents({
 
   useEffect(() => {
     const container = map.getContainer()
-    const preventSelection = (event: Event) => event.preventDefault()
+    const preventSelection = (event: Event) => {
+      event.preventDefault()
+      window.getSelection()?.removeAllRanges()
+    }
 
     container.addEventListener("selectstart", preventSelection)
+    container.addEventListener("contextmenu", preventSelection, { capture: true })
 
     return () => {
       container.removeEventListener("selectstart", preventSelection)
+      container.removeEventListener("contextmenu", preventSelection, { capture: true })
     }
   }, [map])
 
@@ -1300,7 +1305,14 @@ function Home({
   }
 
   return (
-    <main className="phone-map-screen">
+    <main
+      className="phone-map-screen"
+      onContextMenu={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        window.getSelection()?.removeAllRanges()
+      }}
+    >
       <MapContainer
         center={[-37.25, 144.9]}
         zoom={7}

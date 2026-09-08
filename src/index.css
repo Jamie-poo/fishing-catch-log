@@ -1,17 +1,17 @@
 :root {
-  --bg: #f4f6f1;
-  --surface: #ffffff;
-  --surface-strong: #111816;
-  --surface-soft: #edf2e9;
-  --text: #2f3934;
-  --text-muted: #69736e;
+  --bg: #07100d;
+  --surface: #111816;
+  --surface-strong: #080c0b;
+  --surface-soft: #1b2521;
+  --text: #f8fbf6;
+  --text-muted: rgba(248, 251, 246, 0.64);
   --text-on-dark: #f8fbf6;
-  --border: #dbe2d6;
-  --primary: #0797a6;
-  --primary-dark: #067887;
+  --border: rgba(255, 255, 255, 0.12);
+  --primary: #45ad5f;
+  --primary-dark: #368d4d;
   --danger: #ef4d3f;
   --accent: #f0b429;
-  --shadow: 0 18px 50px rgba(28, 42, 36, 0.18);
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
   --radius: 8px;
   --sans: system-ui, "Segoe UI", Roboto, Arial, sans-serif;
 
@@ -25,24 +25,24 @@
 }
 
 :root[data-theme="dark"] {
-  --bg: #0f1412;
-  --surface: #171e1b;
+  --bg: #07100d;
+  --surface: #111816;
   --surface-strong: #080c0b;
-  --surface-soft: #202a26;
-  --text: #edf3ee;
-  --text-muted: #a6b2ab;
-  --border: #2f3c36;
+  --surface-soft: #1b2521;
+  --text: #f8fbf6;
+  --text-muted: rgba(248, 251, 246, 0.64);
+  --border: rgba(255, 255, 255, 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f1412;
-    --surface: #171e1b;
+    --bg: #07100d;
+    --surface: #111816;
     --surface-strong: #080c0b;
-    --surface-soft: #202a26;
-    --text: #edf3ee;
-    --text-muted: #a6b2ab;
-    --border: #2f3c36;
+    --surface-soft: #1b2521;
+    --text: #f8fbf6;
+    --text-muted: rgba(248, 251, 246, 0.64);
+    --border: rgba(255, 255, 255, 0.12);
   }
 }
 
@@ -191,8 +191,8 @@ h3 {
 }
 
 .danger-button {
-  background: rgba(239, 77, 63, 0.12);
-  color: #b62920;
+  background: rgba(239, 77, 63, 0.16);
+  color: #ff7469;
 }
 
 .app-page {
@@ -225,9 +225,10 @@ h3 {
   min-height: 56px;
   margin: -18px -16px 16px;
   padding: 8px 10px;
-  background: var(--primary);
-  color: white;
-  box-shadow: 0 8px 22px rgba(17, 24, 22, 0.18);
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(8, 12, 11, 0.98), rgba(22, 31, 27, 0.94));
+  color: var(--text-on-dark);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3);
 }
 
 .catch-entry-card .log-screen-bar {
@@ -256,15 +257,15 @@ h3 {
   min-height: 38px;
   border-radius: var(--radius);
   padding: 0 10px;
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.1);
   color: white;
   font-size: 0.78rem;
   font-weight: 760;
 }
 
 .danger-topbar-button {
-  background: rgba(255, 255, 255, 0.95);
-  color: #b62920;
+  background: rgba(239, 77, 63, 0.18);
+  color: #ff7469;
 }
 
 .page-note,
@@ -287,9 +288,9 @@ h3 {
   overflow: hidden;
   background: #c9dcc5;
   -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
 
 :root[data-theme="dark"] .phone-map-screen {
@@ -314,9 +315,18 @@ h3 {
 .home-side-tools,
 .home-layer-picker,
 .bottom-tabs {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+.phone-map-screen img,
+.phone-map-screen .leaflet-tile,
+.phone-map-screen .leaflet-marker-icon,
+.phone-map-screen .leaflet-control,
+.phone-map-screen .leaflet-popup {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none !important;
 }
 
 .phone-map-screen .leaflet-container {
@@ -327,9 +337,9 @@ h3 {
 
 .phone-map-screen input,
 .phone-map-screen textarea {
-  -webkit-touch-callout: default;
-  -webkit-user-select: text;
-  user-select: text;
+  -webkit-touch-callout: default !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
 }
 
 .phone-map-screen .leaflet-top.leaflet-right {
@@ -833,13 +843,14 @@ h3 {
 .map-tool-bar button {
   min-height: 36px;
   flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
   padding: 0 12px;
-  background: rgba(255, 255, 255, 0.94);
-  color: var(--text);
+  background: linear-gradient(180deg, rgba(18, 26, 23, 0.94), rgba(8, 13, 12, 0.94));
+  color: var(--text-on-dark);
   font-size: 0.74rem;
   font-weight: 800;
-  box-shadow: 0 8px 22px rgba(17, 24, 22, 0.18);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.24);
 }
 
 .home-side-tools {
