@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import PhotoAddMenu from "../../components/PhotoAddMenu"
 import {
   getMapItemTypeLabel,
@@ -26,9 +26,12 @@ function FieldNotes({ onBackHome }: FieldNotesProps) {
   const [items, setItems] = useState<SavedMapItem[]>(loadMapItems)
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
   const [editingItemId, setEditingItemId] = useState<number | null>(null)
+  const [galleryItemId, setGalleryItemId] = useState<number | null>(null)
   const [title, setTitle] = useState("")
   const [note, setNote] = useState("")
   const [photos, setPhotos] = useState<string[]>([])
+  const [draggedPhotoIndex, setDraggedPhotoIndex] = useState<number | null>(null)
+  const lastPhotoTap = useRef<{ id: number; time: number } | null>(null)
 
   const visibleItems = useMemo(
     () => items.filter((item) => !isLegacyWaypointForFieldNote(item, items)),
@@ -42,6 +45,10 @@ function FieldNotes({ onBackHome }: FieldNotesProps) {
     editingItemId === null
       ? null
       : visibleItems.find((item) => item.id === editingItemId) ?? null
+  const galleryItem =
+    galleryItemId === null
+      ? null
+      : visibleItems.find((item) => item.id === galleryItemId) ?? null
 
   function updateItems(nextItems: SavedMapItem[]) {
     setItems(nextItems)
@@ -60,6 +67,72 @@ function FieldNotes({ onBackHome }: FieldNotesProps) {
     setTitle("")
     setNote("")
     setPhotos([])
+  }
+
+  function reorderPhotos(photoList: string[], fromIndex: number, toIndex: number) {
+    const nextPhotos = [...photoList]
+    const [movedPhoto] = nextPhotos.splice(fromIndex, 1)
+    nextPhotos.splice(toIndex, 0, movedPhoto)
+    return nextPhotos
+  }
+
+  function updateItemPhotos(itemId: number, nextPhotos: string[]) {
+    updateItems(
+      items.map((item) =>
+        item.id === itemId
+          ? { ...item, photoDataUrls: nextPhotos.length > 0 ? nextPhotos : undefined }
+          : item
+      )
+    )
+  }
+
+  function handlePhotoTap(itemId: number, eventTime: number) {
+    const lastTap = lastPhotoTap.current
+
+    if (lastTap?.id === itemId && eventTime - lastTap.time < 420) {
+      lastPhotoTap.current = null
+      setGalleryItemId(itemId)
+      return
+    }
+
+    lastPhotoTap.current = { id: itemId, time: eventTime }
+  }
+
+  function renderPhotoGrid(
+    photoList: string[],
+    onPhotosChange: (nextPhotos: string[]) => void
+  ) {
+    return (
+      <div className="multi-photo-grid">
+        {photoList.map((photo, index) => (
+          <div
+            key={`${photo.slice(0, 32)}-${index}`}
+            className="multi-photo-item"
+            draggable
+            onDragStart={() => setDraggedPhotoIndex(index)}
+            onDragEnd={() => setDraggedPhotoIndex(null)}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={() => {
+              if (draggedPhotoIndex === null || draggedPhotoIndex === index) return
+              onPhotosChange(reorderPhotos(photoList, draggedPhotoIndex, index))
+              setDraggedPhotoIndex(null)
+            }}
+          >
+            <img src={photo} alt={index === 0 ? "Main field note" : `Field note ${index + 1}`} />
+            {index === 0 && <span className="main-photo-badge">Main</span>}
+            <button
+              type="button"
+              aria-label="Remove photo"
+              onClick={() =>
+                onPhotosChange(photoList.filter((_, photoIndex) => photoIndex !== index))
+              }
+            >
+              -
+            </button>
+          </div>
+        ))}
+      </div>
+    )
   }
 
   function saveEditedItem() {
@@ -137,6 +210,43 @@ function FieldNotes({ onBackHome }: FieldNotesProps) {
     )
   }
 
+  if (galleryItem) {
+    const galleryPhotos = galleryItem.photoDataUrls ?? []
+
+    return (
+      <main className="app-page catch-gallery-page field-notes-page">
+        <header className="log-screen-bar">
+          <button className="topbar-button" onClick={() => setGalleryItemId(null)}>
+            Back
+          </button>
+          <div>
+            <h1>Photo Gallery</h1>
+            <p>{galleryPhotos.length} photo{galleryPhotos.length === 1 ? "" : "s"}</p>
+          </div>
+          <button className="topbar-button" onClick={() => startEditing(galleryItem)}>
+            Edit
+          </button>
+        </header>
+
+        <section className="gallery-panel">
+          {galleryPhotos.length === 0 ? (
+            <p className="empty-state">No photos saved for this pin yet.</p>
+          ) : (
+            renderPhotoGrid(galleryPhotos, (nextPhotos) =>
+              updateItemPhotos(galleryItem.id, nextPhotos)
+            )
+          )}
+
+          <PhotoAddMenu
+            onPhotoAdd={(photo) =>
+              updateItemPhotos(galleryItem.id, [...galleryPhotos, photo].slice(0, 8))
+            }
+          />
+        </section>
+      </main>
+    )
+  }
+
   if (selectedItem) {
     return (
       <main className="app-page field-notes-page">
@@ -163,6 +273,8 @@ function FieldNotes({ onBackHome }: FieldNotesProps) {
               className="catch-hero-photo"
               src={selectedItem.photoDataUrls[0]}
               alt={selectedItem.title}
+              onDoubleClick={() => setGalleryItemId(selectedItem.id)}
+              onTouchEnd={(event) => handlePhotoTap(selectedItem.id, event.timeStamp)}
             />
           )}
 
@@ -213,7 +325,13 @@ function FieldNotes({ onBackHome }: FieldNotesProps) {
               <h2>Photos</h2>
               <div className="field-note-photo-grid">
                 {selectedItem.photoDataUrls.map((photo, index) => (
-                  <img key={`${photo.slice(0, 32)}-${index}`} src={photo} alt={`Field note ${index + 1}`} />
+                  <button
+                    key={`${photo.slice(0, 32)}-${index}`}
+                    type="button"
+                    onClick={() => setGalleryItemId(selectedItem.id)}
+                  >
+                    <img src={photo} alt={`Field note ${index + 1}`} />
+                  </button>
                 ))}
               </div>
             </section>

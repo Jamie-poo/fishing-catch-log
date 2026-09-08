@@ -1855,6 +1855,13 @@ h3 {
   gap: 8px;
 }
 
+.field-note-photo-grid button {
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  padding: 0;
+}
+
 .field-note-photo-grid img {
   width: 100%;
   aspect-ratio: 1.2;
