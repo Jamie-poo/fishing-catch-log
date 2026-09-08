@@ -1778,8 +1778,10 @@ function Home({
               </div>
             ))}
           </div>
-          <section className="captured-note-conditions">
-            <h3>Captured with this note</h3>
+          <details className="captured-note-conditions">
+            <summary>
+              <strong>Current Conditions</strong>
+            </summary>
             <div>
               {noteConditionChips.map((chip) => (
                 <p key={chip.label}>
@@ -1788,7 +1790,7 @@ function Home({
                 </p>
               ))}
             </div>
-          </section>
+          </details>
           <button className="primary-button field-note-save" type="button" onClick={saveFieldNote}>
             {editingMapItemId ? "Save Changes" : "Save Pin"}
           </button>

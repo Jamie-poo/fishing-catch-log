@@ -193,8 +193,10 @@ function FieldNotes({ onBackHome }: FieldNotesProps) {
           )}
 
           {selectedItem.conditions && selectedItem.conditions.length > 0 && (
-            <section className="catch-detail-section">
-              <h2>Captured Conditions</h2>
+            <details className="catch-detail-section field-note-conditions">
+              <summary>
+                <strong>Captured Conditions</strong>
+              </summary>
               <div className="detail-grid">
                 {selectedItem.conditions.map((condition) => (
                   <p key={condition.label}>
@@ -203,7 +205,7 @@ function FieldNotes({ onBackHome }: FieldNotesProps) {
                   </p>
                 ))}
               </div>
-            </section>
+            </details>
           )}
 
           {selectedItem.photoDataUrls && selectedItem.photoDataUrls.length > 1 && (

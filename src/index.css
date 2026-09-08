@@ -1288,11 +1288,40 @@ h3 {
   gap: 8px;
 }
 
-.captured-note-conditions h3 {
+.captured-note-conditions summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: rgba(248, 251, 246, 0.66);
+  cursor: pointer;
+  list-style: none;
+}
+
+.captured-note-conditions summary::-webkit-details-marker {
+  display: none;
+}
+
+.captured-note-conditions summary::after {
+  color: rgba(248, 251, 246, 0.46);
+  content: "v";
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.captured-note-conditions[open] summary::after {
+  transform: rotate(180deg);
+}
+
+.captured-note-conditions summary strong {
   color: rgba(248, 251, 246, 0.48);
   font-size: 0.72rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  white-space: normal;
 }
 
 .captured-note-conditions div {
@@ -1316,7 +1345,7 @@ h3 {
   border-right: 0;
 }
 
-.captured-note-conditions strong {
+.captured-note-conditions p strong {
   overflow: hidden;
   color: #f8fbf6;
   font-size: 0.72rem;
@@ -1324,7 +1353,7 @@ h3 {
   white-space: nowrap;
 }
 
-.captured-note-conditions span {
+.captured-note-conditions p span {
   color: rgba(248, 251, 246, 0.46);
   font-size: 0.62rem;
   font-weight: 900;
@@ -1743,6 +1772,10 @@ h3 {
   gap: 16px;
 }
 
+.field-notes-page .page-topbar {
+  margin-bottom: 22px;
+}
+
 .field-note-list-item .note-pin-badge {
   border: 3px solid white;
   border-radius: 50% 50% 50% 0;
@@ -1752,8 +1785,27 @@ h3 {
   font-weight: 900;
 }
 
+.field-note-list-item .catch-list-copy {
+  gap: 5px;
+}
+
+.field-note-list-item .catch-list-copy strong {
+  margin-bottom: 2px;
+  font-size: 1.04rem;
+  line-height: 1.18;
+}
+
 .field-note-detail .catch-detail-section {
   margin: 14px;
+}
+
+.field-note-detail .catch-summary-box p {
+  gap: 6px;
+  padding: 14px;
+}
+
+.field-note-detail .catch-summary-box strong {
+  letter-spacing: 0.1em;
 }
 
 .field-note-detail .catch-detail-section > p {
@@ -1761,10 +1813,34 @@ h3 {
   line-height: 1.45;
 }
 
+.field-note-detail .catch-detail-section h2,
+.field-note-conditions summary strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.field-note-conditions summary strong {
+  margin-bottom: 0;
+}
+
+.field-note-conditions .detail-grid {
+  margin-top: 12px;
+}
+
 .field-note-editor {
   display: grid;
   gap: 14px;
   padding: 14px;
+}
+
+.field-note-editor label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-muted);
+  font-weight: 800;
 }
 
 .field-note-coordinates {
