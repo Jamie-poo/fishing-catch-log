@@ -1833,8 +1833,8 @@ function Home({
       )}
 
       <nav className="bottom-tabs" aria-label="Main navigation">
-        <button type="button" onClick={onOpenRecords}>
-          <span>Records</span>
+        <button type="button" onClick={onOpenFieldNotes}>
+          <span>Notes</span>
         </button>
         <button type="button" onClick={onOpenCatches}>
           <span>My Catches</span>
@@ -1851,8 +1851,8 @@ function Home({
         <button type="button" onClick={onOpenStats}>
           <span>Stats</span>
         </button>
-        <button type="button" onClick={onOpenFieldNotes}>
-          <span>Notes</span>
+        <button type="button" onClick={onOpenRecords}>
+          <span>Records</span>
         </button>
         <button type="button" onClick={onOpenSettings}>
           <span>Settings</span>

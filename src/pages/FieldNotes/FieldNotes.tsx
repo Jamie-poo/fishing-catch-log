@@ -298,7 +298,7 @@ function FieldNotes({ onBackHome }: FieldNotesProps) {
           </section>
 
           {selectedItem.note && (
-            <section className="catch-detail-section">
+            <section className="catch-detail-section field-note-text-section">
               <h2>Note</h2>
               <p>{selectedItem.note}</p>
             </section>

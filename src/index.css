@@ -1799,6 +1799,12 @@ h3 {
   margin: 14px;
 }
 
+.field-note-text-section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
 .field-note-detail .catch-summary-box p {
   gap: 6px;
   padding: 14px;
@@ -1816,7 +1822,7 @@ h3 {
 .field-note-detail .catch-detail-section h2,
 .field-note-conditions summary strong {
   display: block;
-  margin-bottom: 8px;
+  margin: 0 0 8px;
   color: var(--text);
   letter-spacing: 0;
   text-transform: none;
