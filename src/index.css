@@ -308,6 +308,25 @@ h3 {
   height: 100%;
   width: 100%;
   font-family: var(--sans);
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.phone-map-screen .leaflet-container *,
+.home-side-tools,
+.home-layer-picker,
+.bottom-tabs {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.phone-map-screen input,
+.phone-map-screen textarea {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .phone-map-screen .leaflet-top.leaflet-right {

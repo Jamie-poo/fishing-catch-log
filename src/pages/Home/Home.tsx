@@ -545,6 +545,17 @@ function MapToolEvents({
     })
   }, [map, onCenterChange])
 
+  useEffect(() => {
+    const container = map.getContainer()
+    const preventSelection = (event: Event) => event.preventDefault()
+
+    container.addEventListener("selectstart", preventSelection)
+
+    return () => {
+      container.removeEventListener("selectstart", preventSelection)
+    }
+  }, [map])
+
   return null
 }
 
