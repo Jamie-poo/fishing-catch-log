@@ -1292,6 +1292,7 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   min-height: 42px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
@@ -1324,9 +1325,16 @@ h3 {
   white-space: normal;
 }
 
+.captured-note-conditions summary span {
+  color: rgba(248, 251, 246, 0.46);
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-align: right;
+}
+
 .captured-note-conditions div {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
@@ -1345,12 +1353,15 @@ h3 {
   border-right: 0;
 }
 
+.captured-note-conditions p:nth-child(2n) {
+  border-right: 0;
+}
+
 .captured-note-conditions p strong {
-  overflow: hidden;
   color: #f8fbf6;
   font-size: 0.72rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
 }
 
 .captured-note-conditions p span {

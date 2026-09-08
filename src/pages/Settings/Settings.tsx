@@ -18,6 +18,7 @@ function Settings({ onBackHome }: SettingsProps) {
     groups,
     fields,
     depthUnit,
+    fieldNoteConditions,
     homeMapControls,
     homeMapDisplay,
     homeSearch,
@@ -30,6 +31,7 @@ function Settings({ onBackHome }: SettingsProps) {
     setDepthUnit,
     setGroupVisible,
     setFieldVisible,
+    setFieldNoteConditionVisible,
     setHomeMapControlVisible,
     setHomeMapDisplayVisible,
     setHomeSearchVisible,
@@ -199,6 +201,26 @@ function Settings({ onBackHome }: SettingsProps) {
                   setHomeSearchVisible(option.key, event.target.checked)
                 }
               /> {option.label}
+            </label>
+          ))}
+        </div>
+      </details>
+
+      <h2 className="section-heading">Edit Field Notes</h2>
+      <p className="page-note">Choose which live conditions appear in the Field Note / Pin dropdown.</p>
+
+      <details className="catch-detail-section">
+        <summary><strong>Field Note Conditions</strong></summary>
+        <div className="settings-check-grid">
+          {mapWeatherOptions.map((condition) => (
+            <label key={condition.key}>
+              <input
+                type="checkbox"
+                checked={fieldNoteConditions[condition.key] ?? true}
+                onChange={(event) =>
+                  setFieldNoteConditionVisible(condition.key, event.target.checked)
+                }
+              /> {condition.label}
             </label>
           ))}
         </div>

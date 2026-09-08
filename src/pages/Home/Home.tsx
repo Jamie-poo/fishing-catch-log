@@ -545,6 +545,7 @@ function Home({
     homeMapDisplay,
     homeSearch,
     homeSummary,
+    fieldNoteConditions,
     lengthUnit,
     mapWeatherConditions,
     pressureTrendHours,
@@ -592,6 +593,10 @@ function Home({
   const [fieldNoteTitle, setFieldNoteTitle] = useState("Field Note / Pin")
   const [fieldNoteText, setFieldNoteText] = useState("")
   const [fieldNotePhotos, setFieldNotePhotos] = useState<string[]>([])
+  const [fieldNoteConditionValues, setFieldNoteConditionValues] = useState<
+    Record<string, string>
+  >({})
+  const [fieldNoteConditionStatus, setFieldNoteConditionStatus] = useState("")
   const [editingMapItemId, setEditingMapItemId] = useState<number | null>(null)
   const [measurePoints, setMeasurePoints] = useState<LocationPoint[]>([])
   const [catchLocationNames, setCatchLocationNames] = useState<Record<string, string>>({})
@@ -637,26 +642,13 @@ function Home({
     [elevationProfile]
   )
   const intel = useMemo(() => buildIntel(weatherValues), [weatherValues])
-  const noteConditionChips = [
-    {
-      label: "Weather",
-      value: `${weatherValues["weather.temperature"] || "-"} ${weatherValues["weather.conditions"] || weatherValues["weather.cloudCover"] || ""}`.trim(),
-    },
-    {
-      label: "Wind",
-      value:
-        weatherValues["weather.windDirection"] && weatherValues["weather.windSpeed"]
-          ? `${weatherValues["weather.windDirection"]} ${weatherValues["weather.windSpeed"]}`
-          : "-",
-    },
-    {
-      label: "Moon",
-      value:
-        weatherValues["moon.moonIllumination"] && weatherValues["moon.moonPhase"]
-          ? `${weatherValues["moon.moonIllumination"]} ${weatherValues["moon.moonPhase"]}`
-      : "-",
-    },
-  ]
+  const visibleFieldNoteConditions = mapWeatherOptions.filter(
+    (condition) => fieldNoteConditions[condition.key] ?? true
+  )
+  const noteConditionRows = visibleFieldNoteConditions.map((condition) => ({
+    label: condition.label,
+    value: fieldNoteConditionValues[condition.key] || "-",
+  }))
   const visibleMapItems = useMemo(
     () => mapItems.filter((item) => !isLegacyWaypointForFieldNote(item, mapItems)),
     [mapItems]
@@ -1149,12 +1141,32 @@ function Home({
     ).catch(() => undefined)
   }
 
+  async function loadFieldNoteConditions(point: LocationPoint) {
+    setFieldNoteConditionStatus("Loading current conditions...")
+
+    try {
+      const values = await getAutomaticEnvironmentData(
+        point.latitude,
+        point.longitude,
+        pressureTrendHours
+      )
+
+      setFieldNoteConditionValues(values)
+      setFieldNoteConditionStatus("Current conditions")
+    } catch {
+      setFieldNoteConditionValues({})
+      setFieldNoteConditionStatus("Current conditions unavailable")
+    }
+  }
+
   function closeFieldNote() {
     setFieldNoteOpen(false)
     setFieldNotePoint(null)
     setFieldNoteTitle("Field Note / Pin")
     setFieldNoteText("")
     setFieldNotePhotos([])
+    setFieldNoteConditionValues({})
+    setFieldNoteConditionStatus("")
     setEditingMapItemId(null)
   }
 
@@ -1169,10 +1181,7 @@ function Home({
     closeIntelPanel()
     closeWeatherPanel()
     setLayersOpen(false)
-
-    if (!weatherValues["weather.temperature"]) {
-      void loadWeatherValues("Capturing conditions...").catch(() => undefined)
-    }
+    void loadFieldNoteConditions(mapCenter)
   }
 
   function editMapItem(item: SavedMapItem) {
@@ -1185,10 +1194,16 @@ function Home({
     setFieldNoteTitle(item.title || "Field Note / Pin")
     setFieldNoteText(item.note || "")
     setFieldNotePhotos(item.photoDataUrls ?? [])
+    setFieldNoteConditionValues({})
+    setFieldNoteConditionStatus("")
     closeIntelPanel()
     closeWeatherPanel()
     setLayersOpen(false)
     setActiveTool("browse")
+    void loadFieldNoteConditions({
+      latitude: item.latitude,
+      longitude: item.longitude,
+    })
   }
 
   function toggleLayers() {
@@ -1268,7 +1283,7 @@ function Home({
       longitude: point.longitude,
       createdAt,
       photoDataUrls: fieldNotePhotos.length > 0 ? fieldNotePhotos : undefined,
-      conditions: noteConditionChips,
+      conditions: noteConditionRows,
     }
 
     updateMapItems((current) =>
@@ -1377,7 +1392,10 @@ function Home({
           intelOpen={intelOpen}
           weatherOpen={weatherOpen}
           onCenterChange={setMapCenter}
-          onFieldNotePoint={setFieldNotePoint}
+          onFieldNotePoint={(point) => {
+            setFieldNotePoint(point)
+            void loadFieldNoteConditions(point)
+          }}
           onIntelPoint={(point) => void dropIntelPoint(point)}
           onMapTap={closeMapOverlays}
           onMeasurePoint={(point) => setMeasurePoints((current) => [...current, point])}
@@ -1851,14 +1869,20 @@ function Home({
           <details className="captured-note-conditions">
             <summary>
               <strong>Current Conditions</strong>
+              {fieldNoteConditionStatus && <span>{fieldNoteConditionStatus}</span>}
             </summary>
             <div>
-              {noteConditionChips.map((chip) => (
-                <p key={chip.label}>
-                  <strong>{chip.value}</strong>
-                  <span>{chip.label}</span>
+              {noteConditionRows.length > 0 ? noteConditionRows.map((condition) => (
+                <p key={condition.label}>
+                  <strong>{condition.value}</strong>
+                  <span>{condition.label}</span>
                 </p>
-              ))}
+              )) : (
+                <p>
+                  <strong>-</strong>
+                  <span>No conditions enabled</span>
+                </p>
+              )}
             </div>
           </details>
           <button className="primary-button field-note-save" type="button" onClick={saveFieldNote}>
