@@ -922,13 +922,30 @@ h3 {
 }
 
 .record-map-button span {
+  position: relative;
   min-width: 36px;
   height: 36px;
   border: 2px solid rgba(255, 255, 255, 0.8);
   border-radius: 50%;
   color: #fff;
-  font-size: 1.45rem;
-  line-height: 1;
+  font-size: 0;
+}
+
+.record-map-button span::before,
+.record-map-button span::after {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.record-map-button span::after {
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 
 .weather-button-icon {
@@ -1502,7 +1519,7 @@ h3 {
 
 .map-item-popup-card footer {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 6px;
 }
 
@@ -1515,11 +1532,6 @@ h3 {
   color: #8cf09b;
   font-size: 0.66rem;
   font-weight: 800;
-}
-
-.map-item-popup-card .danger-popup-button {
-  background: rgba(239, 77, 63, 0.14);
-  color: #ff7469;
 }
 
 .map-catch-popup .leaflet-popup-content-wrapper {

@@ -1298,10 +1298,6 @@ function Home({
     closeFieldNote()
   }
 
-  function deleteMapItem(itemId: number) {
-    updateMapItems((current) => current.filter((item) => item.id !== itemId))
-  }
-
   function toggleMapStyle(style: MapStyle) {
     setMapStyle(style)
     setLayersOpen(false)
@@ -1502,17 +1498,6 @@ function Home({
                   >
                     Edit
                   </button>
-                  <button
-                    className="danger-popup-button"
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      deleteMapItem(item.id)
-                    }}
-                    onTouchEnd={(event) => event.stopPropagation()}
-                  >
-                    Delete
-                  </button>
                 </footer>
               </article>
             </Popup>
@@ -1680,7 +1665,7 @@ function Home({
           onClick={onRecordCatch}
           aria-label="Record catch"
         >
-          <span>+</span>
+          <span aria-hidden="true">+</span>
           Record Catch
         </button>
         {(homeMapControls.fieldNote ?? true) && (
