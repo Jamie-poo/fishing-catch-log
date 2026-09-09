@@ -1486,13 +1486,6 @@ function Home({
                     className="map-popup-photo"
                   />
                 )}
-                <div className="map-popup-conditions">
-                  {item.conditions?.map((condition) => (
-                    <span key={condition.label}>
-                      <strong>{condition.label}</strong> {condition.value}
-                    </span>
-                  ))}
-                </div>
                 {item.photoDataUrls && item.photoDataUrls.length > 1 && (
                   <span className="map-popup-photo-count">
                     {item.photoDataUrls.length} photos

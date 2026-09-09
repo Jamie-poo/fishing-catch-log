@@ -29,6 +29,7 @@ function defaultSettings(): VisibilitySettings {
     homeMapDisplay: defaultHomeMapDisplay(),
     homeSearch: defaultHomeSearch(),
     homeSummary: defaultHomeSummary(),
+    fieldNoteCapturedConditions: true,
     fieldNoteConditions: defaultMapWeatherConditions(),
     mapFilters: defaultMapFilters(),
     mapWeatherConditions: defaultMapWeatherConditions(),
@@ -68,6 +69,8 @@ function loadSettings(): VisibilitySettings {
         ...parsed.homeSearch,
       },
       homeSummary: { ...defaults.homeSummary, ...parsed.homeSummary },
+      fieldNoteCapturedConditions:
+        parsed.fieldNoteCapturedConditions ?? defaults.fieldNoteCapturedConditions,
       fieldNoteConditions: {
         ...defaults.fieldNoteConditions,
         ...parsed.fieldNoteConditions,
@@ -122,6 +125,11 @@ export function CatchLogSettingsProvider({ children }: { children: ReactNode }) 
         setSettings((current) => ({
           ...current,
           homeSummary: { ...current.homeSummary, [key]: visible },
+        })),
+      setFieldNoteCapturedConditionsVisible: (visible: boolean) =>
+        setSettings((current) => ({
+          ...current,
+          fieldNoteCapturedConditions: visible,
         })),
       setFieldNoteConditionVisible: (key: string, visible: boolean) =>
         setSettings((current) => ({

@@ -12,6 +12,7 @@ export type VisibilitySettings = {
   homeMapDisplay: Record<string, boolean>
   homeSearch: Record<string, boolean>
   homeSummary: Record<string, boolean>
+  fieldNoteCapturedConditions: boolean
   fieldNoteConditions: Record<string, boolean>
   mapFilters: Record<string, boolean>
   mapWeatherConditions: Record<string, boolean>
@@ -28,6 +29,7 @@ export type SettingsContextValue = VisibilitySettings & {
   setHomeMapDisplayVisible: (key: string, visible: boolean) => void
   setHomeSearchVisible: (key: string, visible: boolean) => void
   setHomeSummaryVisible: (key: string, visible: boolean) => void
+  setFieldNoteCapturedConditionsVisible: (visible: boolean) => void
   setFieldNoteConditionVisible: (key: string, visible: boolean) => void
   setMapFilterVisible: (key: string, visible: boolean) => void
   setMapWeatherConditionVisible: (key: string, visible: boolean) => void

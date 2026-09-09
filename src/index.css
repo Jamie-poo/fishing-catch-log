@@ -1854,6 +1854,20 @@ h3 {
   margin-bottom: 0;
 }
 
+.field-note-conditions summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.field-note-conditions summary span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: right;
+}
+
 .field-note-conditions .detail-grid {
   margin-top: 12px;
 }

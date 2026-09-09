@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import PhotoAddMenu from "../../components/PhotoAddMenu"
+import { getAutomaticEnvironmentData } from "../../data/environmentData"
+import { mapWeatherOptions } from "../../data/mapWeather"
 import {
   getMapItemTypeLabel,
   isLegacyWaypointForFieldNote,
@@ -9,6 +11,7 @@ import {
   saveMapItems,
   type SavedMapItem,
 } from "../../data/mapItems"
+import { useCatchLogSettings } from "../../data/useCatchLogSettings"
 
 type FieldNotesProps = {
   onBackHome: () => void
@@ -31,6 +34,11 @@ function FieldNotes({
   initialSelectedNoteId = null,
   onInitialSelectedNoteHandled,
 }: FieldNotesProps) {
+  const {
+    fieldNoteCapturedConditions,
+    fieldNoteConditions,
+    pressureTrendHours,
+  } = useCatchLogSettings()
   const [items, setItems] = useState<SavedMapItem[]>(loadMapItems)
   const [selectedItemId, setSelectedItemId] = useState<number | null>(
     initialSelectedNoteId
@@ -41,6 +49,11 @@ function FieldNotes({
   const [note, setNote] = useState("")
   const [photos, setPhotos] = useState<string[]>([])
   const [draggedPhotoIndex, setDraggedPhotoIndex] = useState<number | null>(null)
+  const [currentConditions, setCurrentConditions] = useState<{
+    itemId: number | null
+    status: string
+    values: Record<string, string>
+  }>({ itemId: null, status: "", values: {} })
   const lastPhotoTap = useRef<{ id: number; time: number } | null>(null)
 
   const visibleItems = useMemo(
@@ -59,6 +72,27 @@ function FieldNotes({
     galleryItemId === null
       ? null
       : visibleItems.find((item) => item.id === galleryItemId) ?? null
+  const currentConditionStatus = selectedItem
+    ? currentConditions.itemId === selectedItem.id
+      ? currentConditions.status
+      : "Loading current conditions..."
+    : ""
+  const currentConditionRows = useMemo(
+    () => {
+      const values =
+        selectedItem && currentConditions.itemId === selectedItem.id
+          ? currentConditions.values
+          : {}
+
+      return mapWeatherOptions
+        .filter((condition) => fieldNoteConditions[condition.key] ?? true)
+        .map((condition) => ({
+          label: condition.label,
+          value: values[condition.key] || "-",
+        }))
+    },
+    [currentConditions, fieldNoteConditions, selectedItem]
+  )
 
   useEffect(() => {
     if (initialSelectedNoteId === null) return
@@ -83,6 +117,38 @@ function FieldNotes({
       isMounted = false
     }
   }, [])
+
+  useEffect(() => {
+    if (!selectedItem) return
+
+    let isCurrent = true
+
+    getAutomaticEnvironmentData(
+      selectedItem.latitude,
+      selectedItem.longitude,
+      pressureTrendHours
+    )
+      .then((values) => {
+        if (!isCurrent) return
+        setCurrentConditions({
+          itemId: selectedItem.id,
+          status: "Current conditions",
+          values,
+        })
+      })
+      .catch(() => {
+        if (!isCurrent) return
+        setCurrentConditions({
+          itemId: selectedItem.id,
+          status: "Current conditions unavailable",
+          values: {},
+        })
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [pressureTrendHours, selectedItem])
 
   function updateItems(nextItems: SavedMapItem[]) {
     setItems(nextItems)
@@ -362,7 +428,9 @@ function FieldNotes({
             </section>
           )}
 
-          {selectedItem.conditions && selectedItem.conditions.length > 0 && (
+          {fieldNoteCapturedConditions &&
+            selectedItem.conditions &&
+            selectedItem.conditions.length > 0 && (
             <details className="catch-detail-section field-note-conditions">
               <summary>
                 <strong>Captured Conditions</strong>
@@ -377,6 +445,28 @@ function FieldNotes({
               </div>
             </details>
           )}
+
+          <details className="catch-detail-section field-note-conditions">
+            <summary>
+              <strong>Current Conditions</strong>
+              {currentConditionStatus && <span>{currentConditionStatus}</span>}
+            </summary>
+            <div className="detail-grid">
+              {currentConditionRows.length > 0 ? (
+                currentConditionRows.map((condition) => (
+                  <p key={condition.label}>
+                    <strong>{condition.label}</strong>
+                    <span>{condition.value}</span>
+                  </p>
+                ))
+              ) : (
+                <p>
+                  <strong>No conditions enabled</strong>
+                  <span>Change this in Settings.</span>
+                </p>
+              )}
+            </div>
+          </details>
 
           {selectedItem.photoDataUrls && selectedItem.photoDataUrls.length > 1 && (
             <section className="catch-detail-section field-note-photos-section">

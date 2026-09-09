@@ -18,6 +18,7 @@ function Settings({ onBackHome }: SettingsProps) {
     groups,
     fields,
     depthUnit,
+    fieldNoteCapturedConditions,
     fieldNoteConditions,
     homeMapControls,
     homeMapDisplay,
@@ -29,6 +30,7 @@ function Settings({ onBackHome }: SettingsProps) {
     pressureTrendHours,
     weightUnit,
     setDepthUnit,
+    setFieldNoteCapturedConditionsVisible,
     setGroupVisible,
     setFieldVisible,
     setFieldNoteConditionVisible,
@@ -208,7 +210,22 @@ function Settings({ onBackHome }: SettingsProps) {
       </details>
 
       <h2 className="section-heading">Edit Field Note / Pin</h2>
-      <p className="page-note">Choose which live conditions appear in the Field Note / Pin dropdown.</p>
+      <p className="page-note">Choose how captured and live conditions appear on Field Note / Pin details.</p>
+
+      <details className="catch-detail-section">
+        <summary><strong>Captured Conditions Dropdown</strong></summary>
+        <div className="settings-check-grid">
+          <label>
+            <input
+              type="checkbox"
+              checked={fieldNoteCapturedConditions}
+              onChange={(event) =>
+                setFieldNoteCapturedConditionsVisible(event.target.checked)
+              }
+            /> Show Captured Conditions on field notes
+          </label>
+        </div>
+      </details>
 
       <details className="catch-detail-section">
         <summary><strong>Current Conditions Dropdown</strong></summary>
