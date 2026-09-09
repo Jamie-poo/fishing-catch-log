@@ -1674,6 +1674,15 @@ function Home({
       )}
 
       <div className="home-side-tools home-left-tools" aria-label="Quick actions">
+        <button
+          className="home-tool-button record-map-button"
+          type="button"
+          onClick={onRecordCatch}
+          aria-label="Record catch"
+        >
+          <span>+</span>
+          Record Catch
+        </button>
         {(homeMapControls.fieldNote ?? true) && (
           <button
             className={`home-tool-button${fieldNoteOpen ? " active" : ""}`}
@@ -1925,15 +1934,6 @@ function Home({
         </button>
         <button type="button" onClick={onOpenCatches}>
           <span>My Catches</span>
-        </button>
-        <button
-          className="record-tab"
-          type="button"
-          onClick={onRecordCatch}
-          aria-label="Record catch"
-        >
-          <span>+</span>
-          <small>Record</small>
         </button>
         <button type="button" onClick={onOpenStats}>
           <span>Stats</span>

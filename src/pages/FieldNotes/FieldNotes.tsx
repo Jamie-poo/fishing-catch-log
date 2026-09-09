@@ -19,10 +19,38 @@ type FieldNotesProps = {
   onInitialSelectedNoteHandled?: () => void
 }
 
+type ConditionDraft = { label: string; value: string }
+
 function formatCreatedAt(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return "Date not recorded"
-  return date.toLocaleString()
+  const day = String(date.getDate()).padStart(2, "0")
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const year = date.getFullYear()
+  const hour = String(date.getHours()).padStart(2, "0")
+  const minute = String(date.getMinutes()).padStart(2, "0")
+
+  return `${day}/${month}/${year}, ${hour}:${minute}`
+}
+
+function formatDateTimeInput(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+
+  const timezoneOffset = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16)
+}
+
+function dateTimeInputToIso(value: string, fallback: string) {
+  if (!value) return fallback
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? fallback : date.toISOString()
+}
+
+function parseCoordinateInput(value: string, fallback: number) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
 }
 
 function formatCoordinates(item: SavedMapItem) {
@@ -47,6 +75,10 @@ function FieldNotes({
   const [galleryItemId, setGalleryItemId] = useState<number | null>(null)
   const [title, setTitle] = useState("")
   const [note, setNote] = useState("")
+  const [createdAtInput, setCreatedAtInput] = useState("")
+  const [latitudeInput, setLatitudeInput] = useState("")
+  const [longitudeInput, setLongitudeInput] = useState("")
+  const [conditionDrafts, setConditionDrafts] = useState<ConditionDraft[]>([])
   const [photos, setPhotos] = useState<string[]>([])
   const [draggedPhotoIndex, setDraggedPhotoIndex] = useState<number | null>(null)
   const [currentConditions, setCurrentConditions] = useState<{
@@ -161,6 +193,10 @@ function FieldNotes({
     setGalleryItemId(null)
     setTitle(item.title)
     setNote(item.note)
+    setCreatedAtInput(formatDateTimeInput(item.createdAt))
+    setLatitudeInput(String(item.latitude))
+    setLongitudeInput(String(item.longitude))
+    setConditionDrafts(item.conditions ?? [])
     setPhotos(item.photoDataUrls ?? [])
   }
 
@@ -172,7 +208,23 @@ function FieldNotes({
     setGalleryItemId(null)
     setTitle("")
     setNote("")
+    setCreatedAtInput("")
+    setLatitudeInput("")
+    setLongitudeInput("")
+    setConditionDrafts([])
     setPhotos([])
+  }
+
+  function updateConditionDraft(
+    index: number,
+    key: keyof ConditionDraft,
+    value: string
+  ) {
+    setConditionDrafts((current) =>
+      current.map((condition, conditionIndex) =>
+        conditionIndex === index ? { ...condition, [key]: value } : condition
+      )
+    )
   }
 
   function reorderPhotos(photoList: string[], fromIndex: number, toIndex: number) {
@@ -244,6 +296,15 @@ function FieldNotes({
   function saveEditedItem() {
     if (!editingItem) return
 
+    const latitude = parseCoordinateInput(latitudeInput, editingItem.latitude)
+    const longitude = parseCoordinateInput(longitudeInput, editingItem.longitude)
+    const conditions = conditionDrafts
+      .map((condition) => ({
+        label: condition.label.trim(),
+        value: condition.value.trim(),
+      }))
+      .filter((condition) => condition.label || condition.value)
+
     updateItems(
       items.map((item) =>
         item.id === editingItem.id
@@ -253,6 +314,10 @@ function FieldNotes({
               category: "Field Note / Pin",
               title: title.trim() || "Field Note / Pin",
               note: note.trim(),
+              createdAt: dateTimeInputToIso(createdAtInput, editingItem.createdAt),
+              latitude,
+              longitude,
+              conditions: conditions.length > 0 ? conditions : undefined,
               photoDataUrls: photos.length > 0 ? photos : undefined,
             }
           : item
@@ -309,6 +374,86 @@ function FieldNotes({
             Note
             <textarea value={note} onChange={(event) => setNote(event.target.value)} />
           </label>
+          <div className="field-note-editor-grid">
+            <label>
+              Date and time
+              <input
+                type="datetime-local"
+                value={createdAtInput}
+                onChange={(event) => setCreatedAtInput(event.target.value)}
+              />
+            </label>
+            <label>
+              Latitude
+              <input
+                type="number"
+                step="0.000001"
+                value={latitudeInput}
+                onChange={(event) => setLatitudeInput(event.target.value)}
+              />
+            </label>
+            <label>
+              Longitude
+              <input
+                type="number"
+                step="0.000001"
+                value={longitudeInput}
+                onChange={(event) => setLongitudeInput(event.target.value)}
+              />
+            </label>
+          </div>
+          <details className="field-note-editor-panel">
+            <summary>
+              <strong>Captured Conditions</strong>
+            </summary>
+            <div className="field-note-condition-editor">
+              {conditionDrafts.map((condition, index) => (
+                <div className="field-note-condition-row" key={`${condition.label}-${index}`}>
+                  <label>
+                    Label
+                    <input
+                      value={condition.label}
+                      onChange={(event) =>
+                        updateConditionDraft(index, "label", event.target.value)
+                      }
+                    />
+                  </label>
+                  <label>
+                    Value
+                    <input
+                      value={condition.value}
+                      onChange={(event) =>
+                        updateConditionDraft(index, "value", event.target.value)
+                      }
+                    />
+                  </label>
+                  <button
+                    className="danger-button"
+                    type="button"
+                    onClick={() =>
+                      setConditionDrafts((current) =>
+                        current.filter((_, conditionIndex) => conditionIndex !== index)
+                      )
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              {conditionDrafts.length === 0 && (
+                <p className="page-note">No captured conditions saved for this note.</p>
+              )}
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={() =>
+                  setConditionDrafts((current) => [...current, { label: "", value: "" }])
+                }
+              >
+                Add condition
+              </button>
+            </div>
+          </details>
           <div className="field-photo-strip">
             <PhotoAddMenu onPhotoAdd={(photo) => setPhotos((current) => [...current, photo].slice(0, 8))} />
             <span>{photos.length} / 8</span>
@@ -328,7 +473,6 @@ function FieldNotes({
               </div>
             ))}
           </div>
-          <p className="field-note-coordinates">{formatCoordinates(editingItem)}</p>
         </section>
       </main>
     )
