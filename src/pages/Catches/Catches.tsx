@@ -802,7 +802,7 @@ function Catches({
             {(fields["header.length"] ?? true) && <p><strong>Length</strong><span>{formatLength(selectedCatch.length, lengthUnit)}</span></p>}
             {(fields["header.weight"] ?? true) && <p><strong>Weight</strong><span>{formatWeight(selectedCatch.weight, weightUnit)}</span></p>}
             {(fields["header.locationName"] ?? true) && <p><strong>Location</strong><span>{selectedCatch.locationName || "Not recorded"}</span></p>}
-            {(fields["header.dateTime"] ?? true) && <p><strong>Date</strong><span>{new Date(selectedCatch.dateTime).toLocaleString()}</span></p>}
+            {(fields["header.dateTime"] ?? true) && <p><strong>Time Caught</strong><span>{new Date(selectedCatch.dateTime).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span></p>}
           </section>
 
           <h3 className="section-heading">Catch Environment</h3>

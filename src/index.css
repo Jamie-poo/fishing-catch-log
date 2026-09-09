@@ -1888,6 +1888,27 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  list-style: none;
+}
+
+.field-note-conditions summary::-webkit-details-marker {
+  display: none;
+}
+
+.field-note-conditions summary::after {
+  flex: 0 0 auto;
+  width: 18px;
+  color: var(--text-muted);
+  content: "v";
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  transition: transform 160ms ease;
+}
+
+.field-note-conditions[open] summary::after {
+  transform: rotate(180deg);
 }
 
 .field-note-conditions summary span {

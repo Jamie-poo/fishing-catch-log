@@ -1443,7 +1443,6 @@ function Home({
                   <strong>{fish.species || "Unknown species"}</strong>
                   <span>{formatLength(fish.length, lengthUnit)} · {formatWeight(fish.weight, weightUnit)}</span>
                   <span>{getCatchDisplayLocation(fish)}</span>
-                  <span>{new Date(fish.dateTime).toLocaleString()}</span>
                 </button>
               </Popup>
             </Marker>
